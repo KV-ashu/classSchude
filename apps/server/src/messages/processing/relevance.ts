@@ -9,6 +9,13 @@ const SCHEDULE_CONTEXT_PATTERN =
  * the gate that avoids burning LLM calls on ordinary chatter.
  */
 const CHANGE_INTENT_PATTERNS: { name: string; pattern: RegExp }[] = [
+  // Extra / makeup classes are real schedule changes (an added class on a day
+  // that may not even be in the baseline), so they must reach the LLM.
+  {
+    name: 'extra-class',
+    pattern:
+      /\b(extra|make\s?up|makeup|special|additional|double|one\s+more|extra\s+one)\s+(class|classes|lecture|lectures|session|sessions|period|periods|hour|hours)\b/i,
+  },
   { name: 'cancel', pattern: /\b(cancel|cancell?ed|cancellation|cancelling)\b/i },
   { name: 'postpone', pattern: /\bpostpon(e|ed|ement)\b/i },
   { name: 'reschedule', pattern: /\breschedul(e|ed|ing)\b/i },
@@ -17,9 +24,16 @@ const CHANGE_INTENT_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'room', pattern: /\b(room|venue|classroom|hall)\b/i },
   { name: 'online', pattern: /\b(online|offline|meet|video call)\b/i },
   { name: 'suspend', pattern: /\b(suspend(ed)?|on hold|put off)\b/i },
+  // A class that starts/ends late or runs longer is still a timetable change.
+  {
+    name: 'extend',
+    pattern:
+      /\b(class|lecture|session|lab)\b[^.\n]{0,25}\b(extend(ed|s)?|prolong(ed)?|running\s+(over|long)|late\s+by|extra\s+\d+\s*(min|minute|hour))\b|\b(extend(ed|s)?|prolong(ed)?)\b[^.\n]{0,25}\b(class|lecture|session|lab|min|minute|hour)\b/i,
+  },
   // Hinglish intent verbs
   { name: 'hinglish-cancel', pattern: /\b(cancel|band|ruk|skip|nahi hoga|hoga nahi)\b/i },
   { name: 'hinglish-move', pattern: /\b(shift|time change|room change|na chalegi|chal rahi)\b/i },
+  { name: 'hinglish-extra', pattern: /\bextra\s*(class|lecture|session|period)\b/i },
 ];
 
 export interface RelevanceResult {

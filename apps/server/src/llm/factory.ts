@@ -4,8 +4,8 @@ import { GeminiProvider } from './gemini.provider';
 import { StubProvider } from './stub.provider';
 import type { LlmProvider } from './types';
 
-/** Default model for the free Google AI Studio tier. */
-export const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
+/** Default model for the free Google AI Studio tier. Older 1.5/2.5 aliases are retired. */
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 /** Builds the configured LLM provider. Throws a 503-flavoured error when unusable. */
 export function createLlmProvider(): LlmProvider {

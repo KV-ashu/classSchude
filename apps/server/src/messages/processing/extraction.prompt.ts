@@ -17,6 +17,9 @@ export const EXTRACTION_SYSTEM_INSTRUCTION = [
   '- isAmbiguous: true for hedged wording ("I think", "maybe", "probably") or self-contradicting statements',
   '- certainty: your own confidence from 0 to 1; low when the message is unclear',
   '- never invent a subject, date, time or room that is not in the message',
+  '- an announced ADDITIONAL class ("extra class", "makeup class", "special lecture") is a timetable',
+  '  change too: extract it with the stated course, date and time even when that date has no',
+  '  regular class yet, and set certainty to at most 0.6 because nothing can be cancelled',
   '- Hinglish is expected: understand "kal" (tomorrow), "aaj" (today), "cancel hai", "band", "shift"',
   '- ignore greetings, jokes and unrelated chatter',
 ].join('\n');
