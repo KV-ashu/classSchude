@@ -23,6 +23,8 @@ export interface RawMessageDoc {
   sourceId: string;
   sourceKind: MessageSourceKind;
   externalId?: string;
+  senderName?: string;
+  groupName?: string;
   /** When the message was sent - relative dates resolve against THIS, never Date.now(). */
   timestamp: Date;
   rawText: string;
@@ -52,6 +54,8 @@ const rawMessageSchema = new Schema<RawMessageDoc>(
     sourceId: { type: String, required: true, trim: true, maxlength: 120 },
     sourceKind: { type: String, enum: [...MESSAGE_SOURCE_KINDS], required: true },
     externalId: { type: String, trim: true, maxlength: 200 },
+    senderName: { type: String, trim: true, maxlength: 80 },
+    groupName: { type: String, trim: true, maxlength: 120 },
     timestamp: { type: Date, required: true },
     rawText: { type: String, required: true, maxlength: 5000 },
     hash: { type: String, required: true, length: RAW_MESSAGE_HASH_LENGTH, lowercase: true },

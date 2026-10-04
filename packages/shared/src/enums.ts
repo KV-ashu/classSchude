@@ -29,6 +29,7 @@ export type MessageSourceKind = z.infer<typeof messageSourceKindSchema>;
 /** Processing state machine of a RawMessage as it moves through the pipeline. */
 export const PIPELINE_STATUSES = [
   'RECEIVED',
+  'PROCESSING',
   'NORMALIZED',
   'CLASSIFIED',
   'EXTRACTING',

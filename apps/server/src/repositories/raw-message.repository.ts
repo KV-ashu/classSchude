@@ -8,6 +8,8 @@ export interface InsertRawMessageInput {
   sourceId: string;
   sourceKind: MessageSourceKind;
   externalId?: string;
+  senderName?: string;
+  groupName?: string;
   timestamp: Date;
   rawText: string;
   hash: string;

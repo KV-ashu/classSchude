@@ -1,10 +1,14 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './db/connection';
+import { messageAdapters } from './messages/adapters';
 
 const app = createApp();
 
 async function start(): Promise<void> {
+  // Adapters must be running before the server accepts messages.
+  await messageAdapters.start();
+
   try {
     await connectDatabase({ uri: env.MONGODB_URI });
     console.log('[classsync-server] connected to MongoDB');
@@ -28,6 +32,7 @@ async function start(): Promise<void> {
 
   function shutdown(signal: NodeJS.Signals): void {
     console.log(`[classsync-server] ${signal} received - shutting down`);
+    void messageAdapters.stop();
     server.close(() => {
       void disconnectDatabase().finally(() => {
         process.exit(0);

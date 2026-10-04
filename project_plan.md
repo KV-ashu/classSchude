@@ -108,8 +108,9 @@ Workspace confirmed empty. Greenfield.
 - Server API returns the week grid for the `/timetable` view.
 - **Acceptance:** sample CSV imports cleanly; invalid rows produce a readable error list; locked baseline rejects writes.
 
-### Phase 4 — Message Adapter Layer & Ingestion
-**Goal:** Messages flow in via adapters and persist as `RawMessage` with a live status machine.
+### Phase 4 — Message Adapter Layer & Ingestion ✅ done (2026-10-04)
+**Result:** `ManualMessageAdapter` + `SimulationAdapter` (30-message WhatsApp scenario: cancellations, room/time shifts, online classes, typos, Hinglish, ambiguity, contradiction and pure chatter) behind the shared `MessageSourceAdapter` contract; ingestion validates the event, hashes it per user for deduplication and stores it as `RECEIVED`; `POST /api/messages/manual`, `POST /api/messages/simulate`, `GET /api/messages` (+ scenario catalog). **130 server tests green.**
+**Details:** adapters push into an in-process queue that the Phase 5 processing pipeline drains; the simulator is anchored to a fixed clock so replays are byte-identical (and therefore deduplicated). Extraction/timetable mutation deliberately stays out of this phase.
 - `MessageSourceAdapter` interface + `ManualInputAdapter` (REST) + `SimulatorAdapter`.
 - Typed internal EventBus (`emit('message:received', MessageEvent)`) decoupled from Express.
 - Ingestion service: hash -> dedup check -> persist -> kick pipeline (fire-and-forget worker function with per-message error isolation).

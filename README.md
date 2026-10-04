@@ -63,5 +63,5 @@ packages/
 
 ## Status
 
-Phase 3 complete (JWT auth, course CRUD, CSV/JSON/Gemini-vision timetable import, review + lock).
-Next: Phase 4 — MessageSourceAdapters (manual input + demo simulator) and ingestion pipeline.
+Phase 4 complete (MessageSourceAdapters + ingestion/dedup + message API).
+Next: Phase 5 — processing pipeline (relevance classification, Gemini extraction, change review & apply).

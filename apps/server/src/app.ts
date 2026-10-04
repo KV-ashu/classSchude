@@ -3,6 +3,7 @@ import express, { type Express } from 'express';
 import { authRouter } from './auth/auth.routes';
 import { env } from './config/env';
 import { courseRouter } from './courses/course.routes';
+import { messageRouter } from './messages/message.routes';
 import { errorHandler, notFoundHandler } from './middleware/error-handlers';
 import { healthRouter } from './routes/health';
 import { timetableRouter } from './timetable/timetable.routes';
@@ -25,6 +26,7 @@ export function createApp(): Express {
   app.use('/api/auth', authRouter);
   app.use('/api/courses', courseRouter);
   app.use('/api/timetable', timetableRouter);
+  app.use('/api/messages', messageRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
