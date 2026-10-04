@@ -1,4 +1,8 @@
-import type { PipelineStatus, ScheduleChangeAction } from '@classsync/shared';
+import type {
+  PipelineStatus,
+  ScheduleChangeAction,
+  ScheduleChangePayload,
+} from '@classsync/shared';
 import { ApiError } from '../../errors';
 import { createLlmProvider } from '../../llm/factory';
 import type { LlmProvider } from '../../llm/types';
@@ -25,6 +29,12 @@ import { matchCourse, type CourseHint } from './course-matching';
 import { extractScheduleChanges } from './extraction';
 import { evaluateRelevance } from './relevance';
 import type { ExtractedChange } from './extraction.schemas';
+import {
+  publishMessageProcessed,
+  publishReviewRequired,
+  publishScheduleCancelled,
+  publishScheduleUpdated,
+} from '../../realtime/socket';
 import {
   addMinutes,
   isoWeekdayOf,
@@ -262,6 +272,36 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
       },
       reason: draft.reason ?? 'auto-applied',
     });
+
+    // Real-time: tell the UI the effective schedule just changed.
+    const payload: ScheduleChangePayload = {
+      changeId: change.id,
+      entryId: String(entry._id),
+      occurrenceDate,
+      courseCode,
+      action: draft.action,
+      confidence: score,
+      status: 'AUTO_APPLIED',
+      reason: draft.reason ?? null,
+    };
+    if (draft.action === 'CANCEL') {
+      publishScheduleCancelled(String(message.userId), payload);
+    } else {
+      publishScheduleUpdated(String(message.userId), payload);
+    }
+  }
+
+  if (decision === 'REVIEW') {
+    publishReviewRequired(String(message.userId), {
+      changeId: change.id,
+      entryId: String(entry._id),
+      occurrenceDate,
+      courseCode,
+      action: draft.action,
+      confidence: score,
+      status: 'PENDING_REVIEW',
+      reason: draft.reason ?? null,
+    });
   }
 
   return {
@@ -358,6 +398,17 @@ export async function processRawMessage(
     latencyMs: extraction.latencyMs,
     promptVersion: extraction.promptVersion,
     repairAttempted: extraction.repaired,
+  });
+
+  // Real-time: the messages view refreshes itself when processing finishes.
+  publishMessageProcessed(String(message.userId), {
+    messageId,
+    status,
+    changes: changes.map((change) => ({
+      action: change.action,
+      decision: change.decision,
+      courseCode: change.courseCode,
+    })),
   });
 
   return {

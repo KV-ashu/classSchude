@@ -14,6 +14,12 @@ export default defineConfig({
         target: API_TARGET,
         changeOrigin: true,
       },
+      // ...and upgrades websocket connections for the Socket.IO layer.
+      '/socket.io': {
+        target: API_TARGET,
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   test: {

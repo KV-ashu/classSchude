@@ -1,15 +1,52 @@
 /**
- * Socket.IO event contract shared by server and web.
- * Typed payload definitions are added in Phase 7 when the real-time layer
- * is implemented; the event names are frozen here so both sides stay in sync.
+ * Socket.IO contract shared by the API server and the web client.
+ *
+ * Every payload is typed on both sides, so an event rename breaks the build
+ * instead of silently rotting in the browser.
  */
 export const SOCKET_EVENTS = {
   MESSAGE_RECEIVED: 'message:received',
-  MESSAGE_PROCESSING: 'message:processing',
-  SCHEDULE_CHANGE_APPLIED: 'schedule:change-applied',
-  SCHEDULE_CHANGE_UPDATED: 'schedule:change-updated',
-  REVIEW_QUEUED: 'review:queued',
-  TIMETABLE_CHANGED: 'timetable:changed',
+  MESSAGE_PROCESSED: 'message:processed',
+  SCHEDULE_UPDATED: 'schedule.updated',
+  SCHEDULE_CANCELLED: 'schedule.cancelled',
+  REVIEW_REQUIRED: 'schedule.reviewRequired',
+  REVIEW_RESOLVED: 'review.resolved',
+  CHANGE_REVERTED: 'change.reverted',
 } as const;
 
-export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+export interface ScheduleChangePayload {
+  changeId: string | null;
+  entryId: string | null;
+  occurrenceDate: string | null;
+  courseCode: string | null;
+  action: string | null;
+  confidence: number | null;
+  status: string | null;
+  reason: string | null;
+}
+
+export interface MessageProcessedPayload {
+  messageId: string;
+  status: string;
+  changes: { action: string; decision: string; courseCode: string | null }[];
+}
+
+export interface SocketEventPayloads {
+  'message:received': { messageId: string; sourceKind: string };
+  'message:processed': MessageProcessedPayload;
+  'schedule.updated': ScheduleChangePayload;
+  'schedule.cancelled': ScheduleChangePayload;
+  'schedule.reviewRequired': ScheduleChangePayload;
+  'review.resolved': ScheduleChangePayload;
+  'change.reverted': ScheduleChangePayload;
+}
+
+export type ServerToClientEvents = {
+  [K in keyof SocketEventPayloads]: (payload: SocketEventPayloads[K]) => void;
+};
+
+export type ClientToServerEvents = {
+  'socket:ready': () => void;
+};
+
+export type SocketEventName = keyof SocketEventPayloads;

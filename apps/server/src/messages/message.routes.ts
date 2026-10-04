@@ -157,6 +157,19 @@ messageRouter.post('/:id/process', async (req, res) => {
   res.json({ ok: true, data: { message: toMessageDto(message), processing } });
 });
 
+/** Single message lookup - used by the review queue to show the source text. */
+messageRouter.get('/:id', async (req, res) => {
+  const userId = currentUserId(req);
+  const messageId = requireObjectIdParam(req.params.id, 'message id');
+
+  const message = await RawMessage.findOne({ _id: messageId, userId });
+  if (!message) {
+    throw ApiError.notFound('Message not found');
+  }
+
+  res.json({ ok: true, data: toMessageDto(message) });
+});
+
 messageRouter.get('/', async (req, res) => {
   const userId = currentUserId(req);
   const query = listMessagesQuerySchema.parse(req.query);

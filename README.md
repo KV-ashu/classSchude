@@ -63,5 +63,5 @@ packages/
 
 ## Status
 
-Phase 4 complete (MessageSourceAdapters + ingestion/dedup + message API).
-Next: Phase 5 — processing pipeline (relevance classification, Gemini extraction, change review & apply).
+Phase 6 complete (Socket.IO real-time layer + full web UI: dashboard, timetable, review queue, demo simulator).
+Next: Phase 7 — hardening and polish (seed script, rate limiting, structured logging, README demo).

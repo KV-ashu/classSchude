@@ -1,7 +1,9 @@
+import { createServer } from 'node:http';
 import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './db/connection';
 import { messageAdapters } from './messages/adapters';
+import { attachSocketServer } from './realtime/socket';
 
 const app = createApp();
 
@@ -23,7 +25,11 @@ async function start(): Promise<void> {
     );
   }
 
-  const server = app.listen(env.PORT, () => {
+  const httpServer = createServer(app);
+  // Real-time layer shares the HTTP server; rooms are per account.
+  attachSocketServer(httpServer);
+
+  httpServer.listen(env.PORT, () => {
     console.log(
       `[classsync-server] listening on http://localhost:${env.PORT} (${env.NODE_ENV}, tz=${env.TZ_DEFAULT})`,
     );
@@ -33,7 +39,7 @@ async function start(): Promise<void> {
   function shutdown(signal: NodeJS.Signals): void {
     console.log(`[classsync-server] ${signal} received - shutting down`);
     void messageAdapters.stop();
-    server.close(() => {
+    httpServer.close(() => {
       void disconnectDatabase().finally(() => {
         process.exit(0);
       });

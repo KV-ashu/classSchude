@@ -1,4 +1,4 @@
-import type { ChangeStatus } from '@classsync/shared';
+import type { ChangeStatus, ScheduleChangePayload } from '@classsync/shared';
 import type { Types } from 'mongoose';
 import { ApiError } from '../errors';
 import {
@@ -7,6 +7,12 @@ import {
   type ScheduleChangeDocument,
 } from '../models/index';
 import { appendAuditLog } from '../repositories/audit-log.repository';
+import {
+  publishChangeReverted,
+  publishReviewResolved,
+  publishScheduleCancelled,
+  publishScheduleUpdated,
+} from '../realtime/socket';
 
 export interface ListChangesOptions {
   status?: ChangeStatus;
@@ -97,6 +103,23 @@ export async function approveChange(
     reason: 'approved from the review queue',
   });
 
+  const payload: ScheduleChangePayload = {
+    changeId: change.id,
+    entryId: String(change.targetEntryId),
+    occurrenceDate: change.occurrenceDate,
+    courseCode: null,
+    action: change.action,
+    confidence: change.confidence,
+    status: change.status,
+    reason: null,
+  };
+  publishReviewResolved(String(userId), payload);
+  if (change.action === 'CANCEL') {
+    publishScheduleCancelled(String(userId), payload);
+  } else {
+    publishScheduleUpdated(String(userId), payload);
+  }
+
   return change;
 }
 
@@ -123,6 +146,17 @@ export async function rejectChange(
     targetEntryId: change.targetEntryId,
     occurrenceDate: change.occurrenceDate,
     reason: reason ?? 'rejected from the review queue',
+  });
+
+  publishReviewResolved(String(userId), {
+    changeId: change.id,
+    entryId: String(change.targetEntryId),
+    occurrenceDate: change.occurrenceDate,
+    courseCode: null,
+    action: change.action,
+    confidence: change.confidence,
+    status: change.status,
+    reason: reason ?? null,
   });
 
   return change;
@@ -162,6 +196,27 @@ export async function revertChange(
   change.status = 'REVERTED';
   change.revertedByAuditId = audit._id;
   await change.save();
+
+  publishChangeReverted(String(userId), {
+    changeId: change.id,
+    entryId: String(change.targetEntryId),
+    occurrenceDate: change.occurrenceDate,
+    courseCode: null,
+    action: change.action,
+    confidence: change.confidence,
+    status: change.status,
+    reason: reason ?? null,
+  });
+  publishScheduleUpdated(String(userId), {
+    changeId: change.id,
+    entryId: String(change.targetEntryId),
+    occurrenceDate: change.occurrenceDate,
+    courseCode: null,
+    action: change.action,
+    confidence: change.confidence,
+    status: change.status,
+    reason: reason ?? null,
+  });
 
   return change;
 }

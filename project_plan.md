@@ -153,6 +153,10 @@ Workspace confirmed empty. Greenfield.
 - **Simulator panel** (global drawer): textarea + source picker ("Manual" / "Simulated WhatsApp group") + fake sender/timestamp controls -> POSTs to adapter -> watch pipeline stages animate live.
 - **Acceptance:** end-to-end demo: import baseline -> type "kal DBMS cancel hai" in simulator -> watch processing -> see class cancelled on timetable/dashboard.
 
+### Phase 6 (user-facing "Phase 6") — Real-Time Web UI & Socket.IO ✅ done (2026-10-04)
+**Result:** Socket.IO attached to the HTTP server with JWT handshake + per-account rooms; the pipeline and change service emit `schedule.updated`, `schedule.cancelled`, `schedule.reviewRequired`, `review.resolved`, `change.reverted` and `message.processed` through a typed contract in `packages/shared`. Full React UI: login/register, Dashboard (next class, today's schedule, recent changes, pending badge), Timetable (week/day; cancelled struck through, reschedules shown as old → new), Review queue with inline editing + approve/reject, Demo simulator panel, audit view. Mobile-first Tailwind v4. **190 tests green** (server 180 · shared 7 · web 3), including a real Socket.IO round-trip test.
+*(Covers the planned "Phase 7 — Real-Time Layer" and "Phase 8 — Frontend UI Views".)*
+
 ### Phase 9 — Hardening, Tests & Demo Polish
 - Error-handling audit per pipeline stage (Stage -> Failure behavior table checked into docs).
 - Rate limiting (`express-rate-limit`) on ingestion + LLM endpoints; request size caps.

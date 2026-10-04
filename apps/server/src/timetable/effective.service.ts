@@ -24,6 +24,8 @@ export interface EffectiveEntry {
   changeId: string | null;
   /** False while the entry still matches the immutable baseline. */
   changed: boolean;
+  /** Baseline start time of a rescheduled class (so the UI can show old -> new). */
+  previousStartTime: string | null;
 }
 
 export interface EffectiveDay {
@@ -89,6 +91,8 @@ export async function getEffectiveDay(
             : 'SCHEDULED',
       changeId: change?.id ?? null,
       changed: change !== undefined,
+      previousStartTime:
+        change?.action === 'RESCHEDULE_TIME' ? (change.oldValue?.startTime ?? null) : null,
     };
   });
 

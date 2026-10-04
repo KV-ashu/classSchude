@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+﻿import { DateTime } from 'luxon';
 
 export interface ResolutionContext {
   /** Timestamp of the MessageEvent - the only clock the pipeline may use. */
@@ -73,7 +73,7 @@ function parseExplicitDate(text: string): string | null {
   }
 
   // Indian convention: dd/mm/yyyy
-  const dayFirst = text.match(/\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})\b/);
+  const dayFirst = text.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b/);
   if (dayFirst?.[1] && dayFirst[2] && dayFirst[3]) {
     const parsed = DateTime.fromObject(
       { day: Number(dayFirst[1]), month: Number(dayFirst[2]), year: Number(dayFirst[3]) },
@@ -94,7 +94,7 @@ export function isoWeekdayOf(occurrenceDate: string): number | null {
 const TIME_TOKEN = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/gi;
 /** A time must actually look like one - "the 3rd time" is not 03:00. */
 const TIME_EVIDENCE = /(\d{1,2}:\d{2})|(\b\d{1,2}\s*(am|pm)\b)/i;
-const RANGE_PATTERN = /\d\s*[-–—]\s*\d|\b(to|thru|till)\b/i;
+const RANGE_PATTERN = /\d\s*[-â€“â€”]\s*\d|\b(to|thru|till)\b/i;
 const REPLACEMENT_PATTERN = /\b(instead|rather than)\b/i;
 
 export interface ResolvedTimeExpression {
