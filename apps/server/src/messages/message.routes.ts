@@ -8,6 +8,8 @@ import { listRecentRawMessages } from '../repositories/raw-message.repository';
 import { messageAdapters } from './adapters';
 import { ingestMessage } from './ingestion.service';
 import { processRawMessage, type ProcessResult } from './processing/processor';
+import { messageRateLimiter } from '../middleware/rate-limit';
+import { enqueueMessageForProcessing } from '../workers/processing-queue';
 import {
   listMessagesQuerySchema,
   manualMessageBodySchema,
@@ -55,7 +57,7 @@ function currentUserId(req: Request): Types.ObjectId {
   return new Types.ObjectId(requireAuthContext(req).userId);
 }
 
-messageRouter.post('/manual', async (req, res) => {
+messageRouter.post('/manual', messageRateLimiter, async (req, res) => {
   const userId = currentUserId(req);
   const body = manualMessageBodySchema.parse(req.body);
   await messageAdapters.ensureStarted();
@@ -68,6 +70,11 @@ messageRouter.post('/manual', async (req, res) => {
     externalId: body.externalId,
   });
   const result = await ingestMessage(userId, event);
+  // Without `process: true` the background worker picks it up and pushes a
+  // real-time update; the UI refetches when the pipeline finishes.
+  if (result.created && !body.process) {
+    enqueueMessageForProcessing(result.message.id);
+  }
   const processing =
     body.process && result.created ? await processRawMessage(result.message.id) : null;
   const data: IngestedMessageDto = {
@@ -79,7 +86,7 @@ messageRouter.post('/manual', async (req, res) => {
   res.status(result.created ? 201 : 200).json({ ok: true, data });
 });
 
-messageRouter.post('/simulate', async (req, res) => {
+messageRouter.post('/simulate', messageRateLimiter, async (req, res) => {
   const userId = currentUserId(req);
   const body = simulateMessageBodySchema.parse(req.body ?? {});
   await messageAdapters.ensureStarted();
@@ -106,6 +113,9 @@ messageRouter.post('/simulate', async (req, res) => {
   const ingested: IngestedMessageDto[] = [];
   for (const event of events) {
     const result = await ingestMessage(userId, event);
+    if (result.created) {
+      enqueueMessageForProcessing(result.message.id);
+    }
     const processing =
       body.process && result.created ? await processRawMessage(result.message.id) : null;
     ingested.push({ ...toMessageDto(result.message), created: result.created, processing });

@@ -1,26 +1,29 @@
+﻿import { logger } from './config/logger';
 import { createServer } from 'node:http';
 import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './db/connection';
 import { messageAdapters } from './messages/adapters';
 import { attachSocketServer } from './realtime/socket';
+import { startIngestionWorker, stopIngestionWorker } from './workers/ingestion.worker';
 
 const app = createApp();
 
 async function start(): Promise<void> {
   // Adapters must be running before the server accepts messages.
   await messageAdapters.start();
+  startIngestionWorker();
 
   try {
     await connectDatabase({ uri: env.MONGODB_URI });
-    console.log('[classsync-server] connected to MongoDB');
+    logger.info('[classsync-server] connected to MongoDB');
   } catch (error) {
     if (env.NODE_ENV === 'production') {
       throw error;
     }
-    console.warn('[classsync-server] could not reach MongoDB - starting in degraded mode.');
-    console.warn('[classsync-server] start MongoDB or set MONGODB_URI, then restart the server.');
-    console.warn(
+    logger.warn('[classsync-server] could not reach MongoDB - starting in degraded mode.');
+    logger.warn('[classsync-server] start MongoDB or set MONGODB_URI, then restart the server.');
+    logger.warn(
       `[classsync-server] reason: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
@@ -30,15 +33,16 @@ async function start(): Promise<void> {
   attachSocketServer(httpServer);
 
   httpServer.listen(env.PORT, () => {
-    console.log(
+    logger.info(
       `[classsync-server] listening on http://localhost:${env.PORT} (${env.NODE_ENV}, tz=${env.TZ_DEFAULT})`,
     );
-    console.log(`[classsync-server] health check: http://localhost:${env.PORT}/api/health`);
+    logger.info(`[classsync-server] health check: http://localhost:${env.PORT}/api/health`);
   });
 
   function shutdown(signal: NodeJS.Signals): void {
-    console.log(`[classsync-server] ${signal} received - shutting down`);
+    logger.info(`[classsync-server] ${signal} received - shutting down`);
     void messageAdapters.stop();
+    stopIngestionWorker();
     httpServer.close(() => {
       void disconnectDatabase().finally(() => {
         process.exit(0);
@@ -51,6 +55,6 @@ async function start(): Promise<void> {
 }
 
 void start().catch((error: unknown) => {
-  console.error('[classsync-server] failed to start:', error);
+  logger.error({ error }, 'server failed to start');
   process.exit(1);
 });

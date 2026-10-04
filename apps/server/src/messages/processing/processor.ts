@@ -1,3 +1,4 @@
+﻿import { logger } from '../../config/logger';
 import type {
   PipelineStatus,
   ScheduleChangeAction,
@@ -443,6 +444,6 @@ export async function processRawMessageSafely(
   try {
     await processRawMessage(messageId, options);
   } catch (error) {
-    console.error(`[pipeline] processing failed for message ${messageId}:`, error);
+    logger.error({ error, messageId }, 'message processing failed');
   }
 }

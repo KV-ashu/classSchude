@@ -166,12 +166,3 @@ export function matchCourse(rawText: string, courses: CourseHint[]): CourseMatch
   }
   return best;
 }
-
-/** Best fuzzy match without the acceptance threshold (used for diagnostics). */
-export function closestCourse(rawText: string, courses: CourseHint[]): CourseMatch | null {
-  const match = matchCourse(rawText, courses);
-  if (match) {
-    return match;
-  }
-  return matchCourse(rawText, courses);
-}

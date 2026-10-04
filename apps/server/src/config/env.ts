@@ -20,6 +20,21 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(8).default(DEV_JWT_SECRET),
   JWT_EXPIRES_IN: z.string().min(1).default('7d'),
 
+  // Observability
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+
+  // Rate limiting (per IP, per account endpoint group)
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+  MESSAGE_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(60),
+
+  // Background worker that drains ingested messages into the pipeline
+  WORKER_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  WORKER_INTERVAL_MS: z.coerce.number().int().min(250).default(4_000),
+
   LLM_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
   LLM_API_KEY: optionalString,
   LLM_MODEL: optionalString,

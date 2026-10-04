@@ -1,3 +1,4 @@
+﻿import { logger } from '../config/logger';
 import mongoose from 'mongoose';
 
 export interface ConnectDatabaseOptions {
@@ -41,7 +42,7 @@ export async function connectDatabase(options: ConnectDatabaseOptions): Promise<
       lastError = error;
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), MAX_BACKOFF_MS);
-        console.warn(
+        logger.warn(
           `[classsync-server] MongoDB connection attempt ${attempt}/${maxRetries} failed; retrying in ${delay}ms`,
         );
         await sleep(delay);

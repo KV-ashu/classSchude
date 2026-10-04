@@ -8,6 +8,12 @@ export default defineConfig({
     pool: 'forks',
     hookTimeout: 120_000,
     testTimeout: 20_000,
+    // Tests are not users: keep the production rate limits out of the way.
+    env: {
+      AUTH_RATE_LIMIT_MAX: '100000',
+      MESSAGE_RATE_LIMIT_MAX: '100000',
+      WORKER_ENABLED: 'false',
+    },
   },
 });
 

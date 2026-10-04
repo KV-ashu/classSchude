@@ -157,7 +157,17 @@ Workspace confirmed empty. Greenfield.
 **Result:** Socket.IO attached to the HTTP server with JWT handshake + per-account rooms; the pipeline and change service emit `schedule.updated`, `schedule.cancelled`, `schedule.reviewRequired`, `review.resolved`, `change.reverted` and `message.processed` through a typed contract in `packages/shared`. Full React UI: login/register, Dashboard (next class, today's schedule, recent changes, pending badge), Timetable (week/day; cancelled struck through, reschedules shown as old → new), Review queue with inline editing + approve/reject, Demo simulator panel, audit view. Mobile-first Tailwind v4. **190 tests green** (server 180 · shared 7 · web 3), including a real Socket.IO round-trip test.
 *(Covers the planned "Phase 7 — Real-Time Layer" and "Phase 8 — Frontend UI Views".)*
 
-### Phase 9 — Hardening, Tests & Demo Polish
+### Phase 7 (user-facing) — Polish, Hardening & Documentation ✅ done (2026-10-05)
+**Result:** (planned as "Phase 9 — Hardening, Tests & Demo Polish")
+- **Seed script** — `npm run seed -w @classsync/server` creates `demo@classsync.app` / `demo1234` with a 7-course catalog and a 12-class locked `baseline v1` that mirrors the simulator subjects. Re-running safely wipes and recreates the demo data (the only place the baseline immutability guard is bypassed).
+- **Security** — `express-rate-limit` on `/auth/register`, `/auth/login`, `/messages/manual` and `/messages/simulate` (per-IP, draft-7 headers, standard error envelope). Test config lifts the limits.
+- **Structured logging** — pino with `redact` covering `password`, `passwordHash`, `token`, `authorization`, `cookie`, `rawText`, `imageBase64` and `metadata`; all `console.*` calls replaced. Worker/pipeline failures log `messageId` as the correlation id.
+- **Background worker** — ingestion enqueues message ids; `workers/ingestion.worker.ts` drains them on `WORKER_INTERVAL_MS` and runs the pipeline per message with failure isolation (`process: true` still processes inline).
+- **Docs** — README rewritten: architecture mermaid diagram, baseline-vs-effective model, pipeline + confidence policy, full env table, root scripts, a step-by-step simulator walkthrough, testing, security and troubleshooting.
+- **Polish** — removed dead `closestCourse`, fixed the `StubProvider` default to satisfy both the extraction and vision contracts.
+- **198 tests green** (server 188 · shared 7 · web 3); strict typecheck, lint 0 errors, production builds.
+
+### Phase 9 — Hardening, Tests & Demo Polish ✅ done (see Phase 7 above)
 - Error-handling audit per pipeline stage (Stage -> Failure behavior table checked into docs).
 - Rate limiting (`express-rate-limit`) on ingestion + LLM endpoints; request size caps.
 - Structured logging (pino) with correlation ids (rawMessageId) threaded through the pipeline.

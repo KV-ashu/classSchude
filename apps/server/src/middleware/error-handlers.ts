@@ -1,3 +1,4 @@
+﻿import { logger } from '../config/logger';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { ApiError } from '../errors';
@@ -62,7 +63,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 
   const message = err instanceof Error ? err.message : 'Unexpected error';
-  console.error('[classsync-server] unhandled request error:', err);
+  logger.error('[classsync-server] unhandled request error:', err);
   res.status(500).json({
     ok: false,
     error: { code: 'INTERNAL_ERROR', message },
