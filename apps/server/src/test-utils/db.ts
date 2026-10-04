@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { afterAll, beforeAll, beforeEach, inject } from 'vitest';
 
 /** Connects to a dedicated database on the shared test Mongo instance. */
 export async function connectTestDatabase(baseUri: string, dbName: string): Promise<void> {
@@ -26,4 +27,24 @@ export async function disconnectTestDatabase(): Promise<void> {
     await db.dropDatabase();
   }
   await mongoose.disconnect();
+}
+
+/**
+ * Registers the standard database lifecycle hooks for a test file.
+ * Every file gets its own database on the shared in-memory Mongo instance.
+ */
+export function useTestDatabase(dbName: string): void {
+  const mongoUri = inject('mongoUri');
+
+  beforeAll(async () => {
+    await connectTestDatabase(mongoUri, dbName);
+  });
+
+  beforeEach(async () => {
+    await clearAllCollections();
+  });
+
+  afterAll(async () => {
+    await disconnectTestDatabase();
+  });
 }

@@ -18,6 +18,7 @@ const envSchema = z.object({
   MONGODB_URI: z.string().min(1).default('mongodb://127.0.0.1:27017/classsync'),
 
   JWT_SECRET: z.string().min(8).default(DEV_JWT_SECRET),
+  JWT_EXPIRES_IN: z.string().min(1).default('7d'),
 
   LLM_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
   LLM_API_KEY: optionalString,

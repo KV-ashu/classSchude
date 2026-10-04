@@ -99,8 +99,9 @@ Workspace confirmed empty. Greenfield.
 - Tests with `mongodb-memory-server`: CRUD per model, dedup unique index proven, TimetableEntry write-guard proven.
 - **Acceptance:** `npm test` green; dedup rejects identical hash; baseline guard throws `BaselineImmutableError`.
 
-### Phase 3 — Baseline Timetable (Import & Management)
-**Goal:** A student can create, import, view, and lock their Baseline.
+### Phase 3 — Baseline Timetable & Authentication ✅ done (2026-10-04)
+**Result:** JWT auth (register/login/`me` + `requireAuth` middleware, scrypt hashing), course CRUD with alias management, and the full baseline import pipeline: CSV/JSON/Gemini-vision all normalize into one Zod row schema -> draft entries -> review (patch/delete) -> `POST /api/timetable/lock`. **103 server tests green.**
+**Details:** all-or-nothing imports (invalid rows or intra-batch overlaps abort the import with a per-row report), course resolution by code with optional auto-creation, draft re-import replaces the unconfirmed version while a locked baseline forces `baselineVersion + 1`, and every mutation is audit-logged (`BASELINE_IMPORTED` / `BASELINE_LOCKED`).
 - Course CRUD + alias management (alias list feeds the Phase 6 relevance classifier).
 - TimetableEntry CRUD; JSON/CSV import endpoint with Zod row validation + per-row error report (partial import is transactional or all-or-nothing — decide in implementation, default all-or-nothing).
 - `POST /api/timetable/lock` -> `locked=true`; edits afterwards require explicit re-import flow (creates `baselineVersion+1`), never silent mutation.

@@ -15,9 +15,12 @@
   },
   "dependencies": {
     "@classsync/shared": "*",
+    "@google/genai": "^2.27.0",
     "cors": "^2.8.6",
+    "csv-parse": "^7.0.3",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "jose": "^6.2.12",
     "mongoose": "^9.10.4",
     "socket.io": "^4.8.4",
     "zod": "^4.6.5"

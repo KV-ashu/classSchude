@@ -17,6 +17,11 @@ export async function findUserForAuth(email: string): Promise<UserDocument | nul
   return User.findOne({ email: email.toLowerCase().trim() }).select('+passwordHash');
 }
 
+/** Looks an account up without the password hash. */
+export async function findUserByEmail(email: string): Promise<UserDocument | null> {
+  return User.findOne({ email: email.toLowerCase().trim() });
+}
+
 export async function findUserById(userId: string): Promise<UserDocument | null> {
   return User.findById(userId);
 }
