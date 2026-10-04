@@ -8,11 +8,15 @@ export const manualMessageBodySchema = z.object({
   /** ISO-8601 instant with offset; defaults to the server clock. */
   timestamp: z.iso.datetime({ offset: true }).optional(),
   externalId: z.string().trim().max(200).optional(),
+  /** Run the Phase 5 pipeline immediately after ingestion. */
+  process: z.boolean().default(false),
 });
 
 export const simulateMessageBodySchema = z.object({
   /** `next` replays one scripted message, `all` the rest, `reset` rewinds. */
   mode: z.enum(['next', 'all', 'reset']).default('next'),
+  /** Run the Phase 5 pipeline immediately after ingestion. */
+  process: z.boolean().default(false),
 });
 
 export const listMessagesQuerySchema = z.object({

@@ -1,6 +1,6 @@
 import type { MessageSourceKind, PipelineStatus } from '@classsync/shared';
 import type { Types } from 'mongoose';
-import { RawMessage, type RawMessageDocument } from '../models/index';
+import { RawMessage, type LlmMeta, type RawMessageDocument } from '../models/index';
 import { isDuplicateKeyError } from '../utils/mongo-errors';
 
 export interface InsertRawMessageInput {
@@ -69,4 +69,12 @@ export async function listRecentRawMessages(
   limit = 50,
 ): Promise<RawMessageDocument[]> {
   return RawMessage.find({ userId }).sort({ timestamp: -1 }).limit(limit);
+}
+
+/** Stores LLM call metadata on the message for observability. */
+export async function setRawMessageLlmMeta(
+  messageId: string,
+  llmMeta: LlmMeta,
+): Promise<RawMessageDocument | null> {
+  return RawMessage.findByIdAndUpdate(messageId, { $set: { llmMeta } }, { returnDocument: 'after' });
 }

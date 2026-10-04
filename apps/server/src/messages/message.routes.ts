@@ -1,10 +1,13 @@
 import { Router, type Request } from 'express';
 import { Types } from 'mongoose';
 import { requireAuth, requireAuthContext } from '../auth/auth.middleware';
-import type { RawMessageDocument } from '../models/index';
+import { ApiError } from '../errors';
+import { requireObjectIdParam } from '../http/require-object-id-param';
+import { RawMessage, type RawMessageDocument } from '../models/index';
 import { listRecentRawMessages } from '../repositories/raw-message.repository';
 import { messageAdapters } from './adapters';
 import { ingestMessage } from './ingestion.service';
+import { processRawMessage, type ProcessResult } from './processing/processor';
 import {
   listMessagesQuerySchema,
   manualMessageBodySchema,
@@ -30,7 +33,7 @@ interface MessageDto {
   createdAt: string;
 }
 
-type IngestedMessageDto = MessageDto & { created: boolean };
+type IngestedMessageDto = MessageDto & { created: boolean; processing?: ProcessResult | null };
 
 function toMessageDto(message: RawMessageDocument): MessageDto {
   return {
@@ -65,7 +68,13 @@ messageRouter.post('/manual', async (req, res) => {
     externalId: body.externalId,
   });
   const result = await ingestMessage(userId, event);
-  const data: IngestedMessageDto = { ...toMessageDto(result.message), created: result.created };
+  const processing =
+    body.process && result.created ? await processRawMessage(result.message.id) : null;
+  const data: IngestedMessageDto = {
+    ...toMessageDto(result.message),
+    created: result.created,
+    processing,
+  };
 
   res.status(result.created ? 201 : 200).json({ ok: true, data });
 });
@@ -97,7 +106,9 @@ messageRouter.post('/simulate', async (req, res) => {
   const ingested: IngestedMessageDto[] = [];
   for (const event of events) {
     const result = await ingestMessage(userId, event);
-    ingested.push({ ...toMessageDto(result.message), created: result.created });
+    const processing =
+      body.process && result.created ? await processRawMessage(result.message.id) : null;
+    ingested.push({ ...toMessageDto(result.message), created: result.created, processing });
   }
 
   res.status(201).json({
@@ -129,6 +140,21 @@ messageRouter.get('/simulate', (_req, res) => {
       })),
     },
   });
+});
+
+/** Runs the processing pipeline for one stored message. */
+messageRouter.post('/:id/process', async (req, res) => {
+  const userId = currentUserId(req);
+  const messageId = requireObjectIdParam(req.params.id, 'message id');
+
+  const message = await RawMessage.findOne({ _id: messageId, userId });
+  if (!message) {
+    throw ApiError.notFound('Message not found');
+  }
+
+  const processing = await processRawMessage(messageId);
+
+  res.json({ ok: true, data: { message: toMessageDto(message), processing } });
 });
 
 messageRouter.get('/', async (req, res) => {

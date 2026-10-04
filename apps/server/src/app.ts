@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import { authRouter } from './auth/auth.routes';
 import { env } from './config/env';
+import { changeRouter } from './changes/change.routes';
 import { courseRouter } from './courses/course.routes';
 import { messageRouter } from './messages/message.routes';
 import { errorHandler, notFoundHandler } from './middleware/error-handlers';
@@ -27,6 +28,7 @@ export function createApp(): Express {
   app.use('/api/courses', courseRouter);
   app.use('/api/timetable', timetableRouter);
   app.use('/api/messages', messageRouter);
+  app.use('/api/changes', changeRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
