@@ -8,6 +8,7 @@ interface HealthBody {
   ok: boolean;
   service: string;
   uptimeSeconds: number;
+  db: string;
   timestamp: string;
 }
 
@@ -25,6 +26,7 @@ describe('GET /api/health', () => {
     expect(body.ok).toBe(true);
     expect(body.service).toBe('classsync-server');
     expect(typeof body.uptimeSeconds).toBe('number');
+    expect(['connected', 'disconnected']).toContain(body.db);
     expect(typeof body.timestamp).toBe('string');
   });
 });

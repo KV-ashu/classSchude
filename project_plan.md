@@ -91,7 +91,8 @@ Workspace confirmed empty. Greenfield.
 - ESLint + Prettier; Vitest wired in all workspaces.
 - **Acceptance:** `npm run dev` starts server + web; `npm run typecheck` and `npm run build` pass; health endpoint returns `{ ok: true }`.
 
-### Phase 2 — Database Layer & Models
+### Phase 2 — Database Layer & Models ✅ done (2026-10-04)
+**Result:** Six Mongoose 9 models + thin repositories + connection helper (retry/backoff, graceful shutdown) + in-memory-MongoDB integration suite: **54 server tests green**. Baseline write-guards and AuditLog append-only guards are enforced at the schema level.
 **Goal:** All six models exist and are covered by integration tests.
 - Mongoose schemas per Section 3 + repository modules (thin, typed, no business logic).
 - Mongo connection helper with retry/backoff, graceful shutdown.
@@ -125,7 +126,7 @@ Workspace confirmed empty. Greenfield.
 
 ### Phase 6 — AI Pipeline (LLM Abstraction, Extraction, Confidence)
 **Goal:** Genuine prompt-based extraction that degrades gracefully and never over-trusts the LLM.
-- **`LLMProvider` interface**: `extract(promptPayload) -> Promise<unknown>`; implementations `OpenAIProvider`, `AnthropicProvider` (selected via env), `StubProvider` for tests/dev. Timeout + bounded retry with backoff; failures set `RawMessage.status=FAILED` with reason.
+- **`LLMProvider` interface**: `extract(promptPayload) -> Promise<unknown>`; implementation **`GeminiProvider`** using the official `@google/genai` package (e.g. `gemini-1.5-flash`, Google AI Studio free tier), plus `StubProvider` for tests/dev (optional `OpenAIProvider`/`AnthropicProvider` later). Timeout + bounded retry with backoff; failures set `RawMessage.status=FAILED` with reason.
 - **Prompt design**: system prompt pins output to a strict JSON schema, forbids invention of dates/times/rooms, requires an `ambiguity` signal ("I think DBMS is cancelled" -> `ambiguous: true`) and a `certainty` field per change; includes course alias list + target date context. (Prompt lives in one versioned module, no hardcoded string matching.)
 - **Validation**: Zod parse of raw LLM output; on failure one repair pass (re-prompt with validation errors) then reject gracefully — malformed JSON can never crash the pipeline.
 - **Local relevance classifier**: alias + intent rules run pre-LLM; classification reasoning stored on `RawMessage`.
@@ -189,11 +190,11 @@ Workspace confirmed empty. Greenfield.
 3. At least one LLM API key available for Phase 6; `StubProvider` keeps development unblocked without keys.
 4. Timeline/tz library choice (proposed: **Luxon**, IANA-zone aware) is finalized in Phase 1.
 
-**Open questions for you (can defer; defaults in bold)**
-1. Timetable import format for Phase 3: **JSON + CSV** — sufficient? Or do you want manual grid entry first?
-2. Auth approach for early phases: **`DEV_SINGLE_USER` flag now, full JWT in Phase 9** — acceptable?
-3. Default LLM: env-configurable; default provider/model chosen in Phase 6 (cheap-but-capable tier). Any provider preference (OpenAI vs Anthropic)?
-4. Android scraper: out of scope until M8 is done; it will slot in as another `MessageSourceAdapter` when needed — confirmed?
+**Decisions locked (2026-10-04)**
+1. **Auth:** standard JWT authentication end-to-end (register/login -> access token -> REST + socket handshake). **No `DEV_SINGLE_USER` bypass** - real auth is required from Phase 3 onwards.
+2. **LLM:** **Google Gemini** via the official `@google/genai` npm package (e.g. `gemini-1.5-flash`, Google AI Studio free tier), always accessed through the `LLMProvider` interface. `LLM_PROVIDER=gemini` is accepted by the env schema.
+3. **Timetable import:** **CSV + JSON + image parsing** (Gemini native multimodal) for Phase 3.
+4. **Android scraper:** stays **optional / last** - it is only ever another `MessageSourceAdapter`.
 
 ## 8. Explicitly Out of Scope (for now)
 

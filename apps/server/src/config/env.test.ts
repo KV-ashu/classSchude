@@ -20,7 +20,11 @@ describe('loadEnv', () => {
   });
 
   it('rejects an unknown LLM provider', () => {
-    expect(() => loadEnv({ LLM_PROVIDER: 'gemini' })).toThrow(/LLM_PROVIDER/);
+    expect(() => loadEnv({ LLM_PROVIDER: 'mistral' })).toThrow(/LLM_PROVIDER/);
+  });
+
+  it('accepts the gemini provider (locked decision: @google/genai)', () => {
+    expect(loadEnv({ LLM_PROVIDER: 'gemini' }).LLM_PROVIDER).toBe('gemini');
   });
 
   it('treats empty optional values as unset', () => {

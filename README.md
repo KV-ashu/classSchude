@@ -12,7 +12,7 @@ See [`project_plan.md`](./project_plan.md) for the full phased roadmap.
 - **Web:** React + TypeScript + Vite + TailwindCSS + React Router (+ Socket.IO client)
 - **Server:** Node.js + Express + TypeScript + Socket.IO
 - **Database:** MongoDB via Mongoose
-- **Validation / AI:** Zod, LLM provider abstraction (OpenAI / Anthropic)
+- **Validation / AI:** Zod, LLM provider abstraction (Google Gemini via `@google/genai`)
 
 ## Requirements
 
@@ -63,4 +63,5 @@ packages/
 
 ## Status
 
-Phase 1 complete (monorepo + tooling skeleton). Next: Phase 2 — database models.
+Phase 2 complete (database layer + models with Baseline/Effective immutability guards).
+Next: Phase 3 — baseline timetable (courses, CSV/JSON/image import, locking).

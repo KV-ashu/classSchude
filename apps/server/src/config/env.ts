@@ -19,7 +19,7 @@ const envSchema = z.object({
 
   JWT_SECRET: z.string().min(8).default(DEV_JWT_SECRET),
 
-  LLM_PROVIDER: z.enum(['stub', 'openai', 'anthropic']).default('stub'),
+  LLM_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
   LLM_API_KEY: optionalString,
   LLM_MODEL: optionalString,
 

@@ -41,3 +41,13 @@ export const PIPELINE_STATUSES = [
 ] as const;
 export const pipelineStatusSchema = z.enum(PIPELINE_STATUSES);
 export type PipelineStatus = z.infer<typeof pipelineStatusSchema>;
+
+/** Category of a baseline timetable entry. */
+export const TIMETABLE_ENTRY_KINDS = ['LECTURE', 'LAB', 'TUTORIAL'] as const;
+export const timetableEntryKindSchema = z.enum(TIMETABLE_ENTRY_KINDS);
+export type TimetableEntryKind = z.infer<typeof timetableEntryKindSchema>;
+
+/** Who performed an action recorded in the audit log. */
+export const AUDIT_ACTORS = ['AI', 'USER', 'SYSTEM'] as const;
+export const auditActorSchema = z.enum(AUDIT_ACTORS);
+export type AuditActor = z.infer<typeof auditActorSchema>;
