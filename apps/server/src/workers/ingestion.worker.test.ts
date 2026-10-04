@@ -1,7 +1,9 @@
 import { Types } from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { RawMessage } from '../models/index';
+import { updateRawMessageStatus } from '../repositories/raw-message.repository';
 import { ingestMessage } from '../messages/ingestion.service';
+import { failStrandedMessage } from '../messages/processing/processor';
 import { useTestDatabase } from '../test-utils/db';
 import { buildTestEvent, seedTimetableAccount } from '../test-utils/seed';
 import { drainProcessingQueue } from './ingestion.worker';
@@ -39,5 +41,30 @@ describe('ingestion background worker', () => {
     clearProcessingQueue();
 
     expect(await drainProcessingQueue()).toBe(0);
+  });
+
+  it('never strands a message in RECEIVED or PROCESSING when it fails', async () => {
+    clearProcessingQueue();
+    const account = await seedTimetableAccount();
+    const { userId, event } = buildTestEvent(account.userId, 'DBMS class cancelled today');
+    const { message } = await ingestMessage(new Types.ObjectId(userId), event);
+    await updateRawMessageStatus(message.id, 'PROCESSING');
+
+    const recorded = await failStrandedMessage(message.id, 'provider exploded');
+
+    expect(recorded).toBe(true);
+    const updated = await RawMessage.findById(message.id);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.processingErrors).toContain('provider exploded');
+  });
+
+  it('does not overwrite a message that already reached a final status', async () => {
+    const account = await seedTimetableAccount();
+    const { userId, event } = buildTestEvent(account.userId, 'DBMS lecture shifted to 2 PM today');
+    const { message } = await ingestMessage(new Types.ObjectId(userId), event);
+    await updateRawMessageStatus(message.id, 'APPLIED');
+
+    expect(await failStrandedMessage(message.id, 'too late')).toBe(false);
+    expect((await RawMessage.findById(message.id))?.status).toBe('APPLIED');
   });
 });

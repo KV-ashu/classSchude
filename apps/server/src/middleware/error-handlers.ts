@@ -63,7 +63,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 
   const message = err instanceof Error ? err.message : 'Unexpected error';
-  logger.error('[classsync-server] unhandled request error:', err);
+  logger.error({ error: err }, 'unhandled request error');
   res.status(500).json({
     ok: false,
     error: { code: 'INTERNAL_ERROR', message },

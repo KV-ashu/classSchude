@@ -52,6 +52,29 @@ describe('local relevance filter', () => {
       evaluateRelevance('Please ignore previous msg, DBMS is NOT cancelled', COURSES).relevant,
     ).toBe(true);
   });
+
+  it('treats an announced extra or makeup class as a schedule change', () => {
+    const announcements = [
+      'there will be extra class of CN on friday at 3pm',
+      'extra lecture of DBMS tomorrow at 11',
+      'makeup class for OS on Saturday',
+      'make up session of DBMS at 4 PM today',
+      'special lecture of OS on Monday 10 AM',
+      'double class of DBMS this week',
+      'DBMS class extended by 10 minutes today',
+    ];
+
+    for (const text of announcements) {
+      const result = evaluateRelevance(text, COURSES);
+      expect(result.relevant, text).toBe(true);
+    }
+
+    expect(
+      evaluateRelevance('there will be extra class of CN on friday at 3pm', [
+        { id: '9', code: 'CN', name: 'Computer Networks', aliases: [] },
+      ]).matchedIntents,
+    ).toContain('extra-class');
+  });
 });
 
 describe('course matching', () => {

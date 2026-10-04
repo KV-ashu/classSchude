@@ -436,6 +436,16 @@ function decideMessageStatus(changes: ChangeOutcome[]): PipelineStatus {
   return 'REJECTED';
 }
 
+export async function failStrandedMessage(messageId: string, reason: string): Promise<boolean> {
+  const stranded = await RawMessage.findById(messageId).select('userId status').lean();
+  if (!stranded || (stranded.status !== 'RECEIVED' && stranded.status !== 'PROCESSING')) {
+    return false;
+  }
+  await updateRawMessageStatus(messageId, 'FAILED', [reason]);
+  publishMessageProcessed(String(stranded.userId), { messageId, status: 'FAILED', changes: [] });
+  return true;
+}
+
 /** Fire-and-forget wrapper: one broken message can never take the worker down. */
 export async function processRawMessageSafely(
   messageId: string,
@@ -444,6 +454,8 @@ export async function processRawMessageSafely(
   try {
     await processRawMessage(messageId, options);
   } catch (error) {
-    logger.error({ error, messageId }, 'message processing failed');
+    const reason = error instanceof Error ? error.message : String(error);
+    logger.error({ error, messageId, reason }, 'message processing failed');
+    await failStrandedMessage(messageId, reason);
   }
 }

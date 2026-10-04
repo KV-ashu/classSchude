@@ -165,7 +165,7 @@ See `apps/server/.env.example`.
 | `TZ_DEFAULT` | `Asia/Kolkata` | default user timezone for date resolution |
 | `LLM_PROVIDER` | `stub` | `stub`, `gemini`, `openai` or `anthropic` |
 | `LLM_API_KEY` | – | key for the selected provider (required for `gemini`) |
-| `LLM_MODEL` | `gemini-1.5-flash` for Gemini | model id |
+| `LLM_MODEL` | `gemini-3.8-flash` for Gemini | model id (must be one your key can access) |
 | `LOG_LEVEL` | `info` | pino level (`silent` disables logging) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | rate limit window |
 | `AUTH_RATE_LIMIT_MAX` | `10` | register/login requests per window per IP |
@@ -234,7 +234,7 @@ receives `schedule.cancelled` when a change auto-applies.
 | `db: "disconnected"` in `/api/health` | start MongoDB or point `MONGODB_URI` at an instance |
 | `429 Too many requests` | expected — wait out the window or raise the limits |
 | `503` from image import | set `LLM_PROVIDER=gemini` **and** `LLM_API_KEY` |
-| Messages stay `RECEIVED` | no locked baseline yet, or `WORKER_ENABLED=false` |
+| Messages stay `FAILED` | the LLM call failed — the exact API error is in `processingErrors` and the server log |
 | Socket stays "Reconnecting" | confirm the API is on :4000 and the `/socket.io` dev proxy is active |
 
 ## Status
