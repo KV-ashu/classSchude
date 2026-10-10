@@ -51,6 +51,18 @@ describe('OpenAIProvider', () => {
     expect(call.response_format).toEqual({ type: 'json_object' });
   });
 
+  it('hides reasoning so the JSON payload stays parseable', async () => {
+    create.mockResolvedValue(jsonResponse({ changes: [] }));
+    const provider = new OpenAIProvider('gsk_test', 'openai/gpt-oss-20b');
+
+    await provider.complete({ prompt: 'extract' });
+
+    const call = create.mock.calls.at(-1)?.[0] as {
+      reasoning_format?: string;
+    };
+    expect(call.reasoning_format).toBe('hidden');
+  });
+
   it('maps the system instruction to a developer message for Groq', async () => {
     create.mockResolvedValue(jsonResponse({ changes: [] }));
     const provider = new OpenAIProvider('gsk_test', DEFAULT_GROQ_MODEL);

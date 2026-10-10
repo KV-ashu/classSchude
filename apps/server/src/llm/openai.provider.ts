@@ -59,11 +59,25 @@ export class OpenAIProvider implements LlmProvider {
         ]
       : [{ role: 'user', content: userContent }];
 
-    const response = await client.chat.completions.create({
+    // Groq's reasoning models (e.g. openai/gpt-oss-*) otherwise prepend a
+    // chain-of-thought preamble to the JSON payload, which breaks JSON.parse and
+    // the downstream Zod schema. `reasoning_format: "hidden"` suppresses it.
+    //
+    // This is a Groq extension that is not part of the OpenAI SDK's typed
+    // `ChatCompletionCreateParams`, so the body is typed as an intersection. The
+    // SDK serialises unknown keys straight through, so Groq still receives it.
+    type GroqChatCompletionBody = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
+      reasoning_format: 'hidden' | 'parsed' | 'raw';
+    };
+
+    const body: GroqChatCompletionBody = {
       model: this.model,
       messages,
       response_format: { type: 'json_object' },
-    });
+      reasoning_format: 'hidden',
+    };
+
+    const response = await client.chat.completions.create(body);
 
     const rawText = response.choices[0]?.message?.content;
     if (typeof rawText !== 'string' || rawText.trim().length === 0) {
