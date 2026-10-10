@@ -6,7 +6,7 @@ import { ingestMessage } from '../messages/ingestion.service';
 import { failStrandedMessage } from '../messages/processing/processor';
 import { useTestDatabase } from '../test-utils/db';
 import { buildTestEvent, seedTimetableAccount } from '../test-utils/seed';
-import { drainProcessingQueue } from './ingestion.worker';
+import { drainProcessingQueue, recoverStrandedMessages } from './ingestion.worker';
 import {
   clearProcessingQueue,
   enqueueMessageForProcessing,
@@ -66,5 +66,25 @@ describe('ingestion background worker', () => {
 
     expect(await failStrandedMessage(message.id, 'too late')).toBe(false);
     expect((await RawMessage.findById(message.id))?.status).toBe('APPLIED');
+  });
+
+  it('re-enqueues messages stranded in RECEIVED so a restart retries them', async () => {
+    clearProcessingQueue();
+    const account = await seedTimetableAccount();
+    const { userId, event } = buildTestEvent(account.userId, 'DBMS class cancelled today');
+    const { message } = await ingestMessage(new Types.ObjectId(userId), event);
+
+    // Simulate a previous run that died before draining this message.
+    expect((await RawMessage.findById(message.id))?.status).toBe('RECEIVED');
+    expect(pendingMessageCount()).toBe(0);
+
+    const recovered = await recoverStrandedMessages();
+
+    expect(recovered).toBe(1);
+    expect(pendingMessageCount()).toBe(1);
+
+    // Draining moves it out of RECEIVED and runs the pipeline.
+    await drainProcessingQueue();
+    expect((await RawMessage.findById(message.id))?.status).not.toBe('RECEIVED');
   });
 });
