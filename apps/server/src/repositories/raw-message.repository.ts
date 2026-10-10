@@ -71,6 +71,20 @@ export async function listRecentRawMessages(
   return RawMessage.find({ userId }).sort({ timestamp: -1 }).limit(limit);
 }
 
+/** Terminal statuses the pipeline settles into - everything else is "in flight". */
+const IN_FLIGHT_STATUSES: PipelineStatus[] = ['RECEIVED', 'PROCESSING'];
+
+/**
+ * Messages left in RECEIVED/PROCESSING by a previous run (a crash, a provider
+ * outage, or a restart mid-drain). The startup recovery sweep re-enqueues these
+ * so the pipeline retries them instead of leaving them stuck forever.
+ */
+export async function listInFlightRawMessages(limit = 100): Promise<RawMessageDocument[]> {
+  return RawMessage.find({ status: { $in: IN_FLIGHT_STATUSES } })
+    .sort({ createdAt: 1 })
+    .limit(limit);
+}
+
 /** Stores LLM call metadata on the message for observability. */
 export async function setRawMessageLlmMeta(
   messageId: string,

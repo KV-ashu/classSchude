@@ -37,7 +37,11 @@ const envSchema = z.object({
 
   LLM_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
   LLM_API_KEY: optionalString,
+  /** Provider-specific key alias (e.g. GROQ_API_KEY) so .env can name it directly. */
+  GROQ_API_KEY: optionalString,
   LLM_MODEL: optionalString,
+  /** Overrides the provider's default base URL (e.g. Groq's OpenAI-compatible endpoint). */
+  LLM_BASE_URL: optionalString,
 
   TZ_DEFAULT: z.string().min(1).default('Asia/Kolkata'),
 });

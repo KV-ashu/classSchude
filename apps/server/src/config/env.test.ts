@@ -27,6 +27,27 @@ describe('loadEnv', () => {
     expect(loadEnv({ LLM_PROVIDER: 'gemini' }).LLM_PROVIDER).toBe('gemini');
   });
 
+  it('accepts the openai provider (Groq / OpenAI-compatible endpoints)', () => {
+    const env = loadEnv({ LLM_PROVIDER: 'openai' });
+    expect(env.LLM_PROVIDER).toBe('openai');
+  });
+
+  it('reads the provider-specific GROQ_API_KEY and LLM_BASE_URL overrides', () => {
+    const env = loadEnv({
+      LLM_PROVIDER: 'openai',
+      GROQ_API_KEY: 'gsk_test',
+      LLM_BASE_URL: 'https://api.groq.com/openai/v1',
+    });
+    expect(env.GROQ_API_KEY).toBe('gsk_test');
+    expect(env.LLM_BASE_URL).toBe('https://api.groq.com/openai/v1');
+  });
+
+  it('treats empty GROQ_API_KEY and LLM_BASE_URL as unset', () => {
+    const env = loadEnv({ GROQ_API_KEY: '', LLM_BASE_URL: '' });
+    expect(env.GROQ_API_KEY).toBeUndefined();
+    expect(env.LLM_BASE_URL).toBeUndefined();
+  });
+
   it('treats empty optional values as unset', () => {
     const env = loadEnv({ LLM_API_KEY: '', LLM_MODEL: '' });
     expect(env.LLM_API_KEY).toBeUndefined();
