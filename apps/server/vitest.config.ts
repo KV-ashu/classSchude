@@ -16,7 +16,9 @@ export default defineConfig({
       WORKER_ENABLED: 'false',
       LLM_PROVIDER: 'stub',
       LLM_API_KEY: '',
+      // Hermetic suite: MONGODB_URI has no hardcoded default, so always supply
+      // one here - tests must never fall back to a developer's real .env URI.
+      MONGODB_URI: 'mongodb://127.0.0.1:27017/classsync',
     },
   },
 });
-

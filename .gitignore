@@ -6,10 +6,11 @@ dist/
 *.tsbuildinfo
 **/node_modules/.tmp/
 
-# Environment files (never commit secrets)
+# Environment files (never commit secrets): .env, .env.*, *.env
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!.env.example
 
 # Logs
 *.log

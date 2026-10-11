@@ -1,0 +1,6 @@
+# Environment files (never commit secrets) - mirrors the root rules so a
+# stray .env can never be committed even if the root .gitignore is bypassed.
+.env
+.env.*
+*.env
+!.env.example

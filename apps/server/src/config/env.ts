@@ -15,7 +15,11 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().max(65535).default(4000),
   WEB_ORIGIN: z.string().min(1).default('http://localhost:5173'),
 
-  MONGODB_URI: z.string().min(1).default('mongodb://127.0.0.1:27017/classsync'),
+  /**
+   * Required and read from process.env only (via dotenv) - never a hardcoded
+   * connection string. Fails fast at boot when the environment lacks it.
+   */
+  MONGODB_URI: z.string().min(1),
 
   JWT_SECRET: z.string().min(8).default(DEV_JWT_SECRET),
   JWT_EXPIRES_IN: z.string().min(1).default('7d'),

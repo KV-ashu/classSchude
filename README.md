@@ -159,7 +159,7 @@ See `apps/server/.env.example`.
 | --- | --- | --- |
 | `PORT` | `4000` | API port |
 | `WEB_ORIGIN` | `http://localhost:5173` | allowed CORS origin |
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017/classsync` | database connection |
+| `MONGODB_URI` | – (required) | database connection string, read from `process.env` only |
 | `JWT_SECRET` | `dev-secret-change-me` | JWT signing key — **must** be changed in production |
 | `JWT_EXPIRES_IN` | `7d` | access token lifetime |
 | `TZ_DEFAULT` | `Asia/Kolkata` | default user timezone for date resolution |
