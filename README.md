@@ -22,7 +22,7 @@ asks you about the rest — all in real time.
 | --- | --- |
 | **Timetable import** | CSV, JSON and **timetable photos** (Gemini vision) → one validated row schema |
 | **Immutable baseline** | Your confirmed timetable can never be overwritten — enforced in the model layer |
-| **Message ingestion** | Manual input plus a 30-message simulated WhatsApp scenario, behind a pluggable adapter contract |
+| **Message ingestion** | Manual input, a 30-message simulated WhatsApp scenario and a live **Twilio WhatsApp Sandbox webhook**, behind a pluggable adapter contract |
 | **AI pipeline** | Relevance gate → Gemini extraction → date resolution → conflict detection → confidence routing |
 | **Human in the loop** | Anything uncertain (0.70–0.89) is queued for review with the raw message side by side |
 | **Realtime UI** | Socket.IO pushes cancellations, shifts and review items to every view, no refresh |
@@ -35,6 +35,7 @@ asks you about the rest — all in real time.
 flowchart LR
   M[Manual adapter] --> Q[Ingestion queue]
   S[Simulation adapter] --> Q
+  WA[WhatsApp webhook, Twilio Sandbox] --> Q
   Q --> D[(RawMessage)]
   Q --> P[Processing queue]
   P --> W[Background worker]
@@ -204,6 +205,34 @@ curl -X POST http://localhost:4000/api/messages/simulate \
 Duplicates are ignored: replaying the same scripted message returns the existing record instead of
 processing it twice.
 
+## Receiving real WhatsApp messages (Twilio Sandbox)
+
+`POST /api/webhook/whatsapp` accepts deliveries from **Twilio's WhatsApp Sandbox** (form-encoded
+`Body` and `From`, plus optional `MessageSid`, `SmsTimestamp` and `ProfileName` — an identical JSON
+body works too). The message is stored with `sourceKind: "whatsapp"` and a `200 OK` is returned
+immediately; the background worker then runs the normal Groq + MongoDB pipeline, exactly like the
+manual and simulator routes.
+
+1. Seed the demo account (`npm run seed -w @classsync/server`) — for now every sandbox sender maps
+   to it.
+2. Expose your API publicly (e.g. `ngrok http 4000`) and, in the Twilio Console under the sandbox,
+   set *When a message comes in* to `POST https://<your-host>/api/webhook/whatsapp`.
+3. Join the sandbox from your phone and send a message — or skip the phone and test locally:
+
+```bash
+curl -X POST http://localhost:4000/api/webhook/whatsapp \
+  -d "Body=DBMS class cancelled today" \
+  -d "From=whatsapp:+15550001111" \
+  -d "MessageSid=SM-demo-1" \
+  -d "SmsTimestamp=Tue, 10 Mar 2026 09:15:00 +0000"
+```
+
+A retried delivery (same `MessageSid`) is acknowledged with `200` but never processed twice, and
+`SmsTimestamp` keeps relative-date phrases ("today", "kal") anchored to the real send time. The route
+is deliberately unauthenticated — Twilio cannot send a JWT — so it is rate-limited, Zod-validated
+and deduplicated instead. The sender→user mapping is hardcoded to the demo account until per-phone
+accounts land.
+
 ## Testing
 
 ```bash
@@ -225,6 +254,8 @@ receives `schedule.cancelled` when a change auto-applies.
   `imageBase64` and `metadata` at write time — credentials and message bodies never reach the log.
 - Timetable photos arrive as base64 (25 MB route limit) behind a Zod contract.
 - The baseline is immutable at the database layer: no request path can rewrite confirmed history.
+- The WhatsApp webhook is the only unauthenticated route; it is rate-limited, Zod-validated,
+  deduplicated by `MessageSid` and maps every sender to the seeded demo account.
 
 ## Troubleshooting
 
@@ -239,7 +270,8 @@ receives `schedule.cancelled` when a change auto-applies.
 
 ## Status
 
-Phases 1–7 are complete: tooling, database layer with immutability guards, auth, timetable import,
-adapters and ingestion, the AI pipeline, the realtime web UI, and hardening. The optional Android
+Phases 1–8 are complete: tooling, database layer with immutability guards, auth, timetable import,
+adapters and ingestion, the AI pipeline, the realtime web UI, hardening, and a real WhatsApp
+webhook (Twilio Sandbox → ingestion queue). The optional Android
 notification scraper is the only intentionally deferred component — it plugs in as another
 `MessageSourceAdapter`.

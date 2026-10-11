@@ -175,6 +175,11 @@ Workspace confirmed empty. Greenfield.
 - Test coverage for pipeline happy paths and failure injection (LLM timeout, invalid JSON, DB error mid-apply).
 - README with setup, env table, architecture diagram (mermaid), and demo script.
 
+### Phase 8 (user-facing) — Real WhatsApp Integration ✅ done (2026-10-10)
+**Result:** `POST /api/webhook/whatsapp` accepts Twilio WhatsApp Sandbox deliveries (form-encoded `Body`/`From` with optional `MessageSid`/`SmsTimestamp`/`ProfileName`; an identical JSON body also works), maps every sandbox sender to the seeded demo account and pushes the message into the same ingestion queue as `/messages/manual` — the Groq + MongoDB pipeline runs with zero webhook-specific logic. `200 OK` is returned immediately; the background worker processes asynchronously.
+**Details:** Twilio redeliveries are deduplicated by `MessageSid` (plus the usual content hash), `SmsTimestamp` keeps relative-date resolution anchored to the send time, `sourceKind: "whatsapp"` was added to `MESSAGE_SOURCE_KINDS`, and the unauthenticated route sits behind `MESSAGE_RATE_LIMIT_MAX`. 5 new server tests.
+**Next (8.2):** per-phone sender→user mapping table, Meta Graph API payload shape + `GET` verification handshake, outbound replies.
+
 ## 5. Cross-Cutting Concerns
 
 - **TypeScript strict everywhere**; `any` banned (lint rule); Zod at every boundary (HTTP body, LLM output, import rows, env, socket payloads).

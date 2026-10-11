@@ -24,7 +24,7 @@ export const changeStatusSchema = z.enum(CHANGE_STATUSES);
 export type ChangeStatus = z.infer<typeof changeStatusSchema>;
 
 /** Where a RawMessage came from (one per MessageSourceAdapter kind). */
-export const MESSAGE_SOURCE_KINDS = ['manual', 'simulator', 'android-scraper'] as const;
+export const MESSAGE_SOURCE_KINDS = ['manual', 'simulator', 'android-scraper', 'whatsapp'] as const;
 export const messageSourceKindSchema = z.enum(MESSAGE_SOURCE_KINDS);
 export type MessageSourceKind = z.infer<typeof messageSourceKindSchema>;
 

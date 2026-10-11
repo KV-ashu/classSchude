@@ -9,6 +9,7 @@ import { messageRouter } from './messages/message.routes';
 import { errorHandler, notFoundHandler } from './middleware/error-handlers';
 import { healthRouter } from './routes/health';
 import { timetableRouter } from './timetable/timetable.routes';
+import { whatsappWebhookRouter } from './webhooks/whatsapp.routes';
 
 /**
  * Builds the Express application. Kept separate from the HTTP listener so
@@ -22,6 +23,8 @@ export function createApp(): Express {
 
   // Base64 timetable photos are large: a roomier parser runs before the global one.
   app.use('/api/timetable/import/image', express.json({ limit: '25mb' }));
+  // Twilio webhooks arrive as application/x-www-form-urlencoded (Body/From/...).
+  app.use('/api/webhook', express.urlencoded({ extended: false }));
   app.use(express.json({ limit: '1mb' }));
 
   app.use('/api/health', healthRouter);
@@ -29,6 +32,7 @@ export function createApp(): Express {
   app.use('/api/courses', courseRouter);
   app.use('/api/timetable', timetableRouter);
   app.use('/api/messages', messageRouter);
+  app.use('/api/webhook', whatsappWebhookRouter);
   app.use('/api/changes', changeRouter);
   app.use('/api/audit', auditRouter);
 
