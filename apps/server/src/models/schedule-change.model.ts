@@ -32,7 +32,10 @@ export interface ConfidenceFactors {
 export interface ScheduleChangeDoc {
   userId: Types.ObjectId;
   rawMessageId: Types.ObjectId;
-  targetEntryId: Types.ObjectId;
+  /** Absent for ADD changes - they create a slot that has no baseline entry yet. */
+  targetEntryId?: Types.ObjectId;
+  /** Course the change applies to (required for ADD, which has no baseline entry). */
+  courseId?: Types.ObjectId;
   /** Calendar date (yyyy-mm-dd) the change applies to, resolved in the user's timezone. */
   occurrenceDate: string;
   action: ScheduleChangeAction;
@@ -72,7 +75,8 @@ const scheduleChangeSchema = new Schema<ScheduleChangeDoc>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     rawMessageId: { type: Schema.Types.ObjectId, ref: 'RawMessage', required: true },
-    targetEntryId: { type: Schema.Types.ObjectId, ref: 'TimetableEntry', required: true },
+    targetEntryId: { type: Schema.Types.ObjectId, ref: 'TimetableEntry' },
+    courseId: { type: Schema.Types.ObjectId, ref: 'Course' },
     occurrenceDate: {
       type: String,
       required: true,

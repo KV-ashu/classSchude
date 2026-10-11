@@ -6,6 +6,8 @@ export const SCHEDULE_CHANGE_ACTIONS = [
   'RESCHEDULE_TIME',
   'CHANGE_ROOM',
   'MARK_ONLINE',
+  /** An announced extra/makeup class that creates a brand-new timetable slot. */
+  'ADD',
 ] as const;
 export const scheduleChangeActionSchema = z.enum(SCHEDULE_CHANGE_ACTIONS);
 export type ScheduleChangeAction = z.infer<typeof scheduleChangeActionSchema>;

@@ -1,15 +1,17 @@
 import type { CourseHint } from './course-matching';
 
-export const EXTRACTION_PROMPT_VERSION = 'extract-v1';
+export const EXTRACTION_PROMPT_VERSION = 'extract-v2';
 
 export const EXTRACTION_SYSTEM_INSTRUCTION = [
   'You extract college timetable changes from a single chat message.',
   'Reply with JSON only, shaped as:',
-  '{ "changes": [ { "action": "CANCEL" | "RESCHEDULE_TIME" | "CHANGE_ROOM" | "MARK_ONLINE",',
+  '{ "changes": [ { "action": "ADD" | "CANCEL" | "RESCHEDULE_TIME" | "CHANGE_ROOM" | "MARK_ONLINE",',
   '  "courseText": string | null, "dateExpression": string | null, "timeExpression": string | null,',
   '  "room": string | null, "isAmbiguous": boolean, "certainty": number, "reason": string | null } ] }',
   'Rules:',
   '- one entry per timetable change; use an empty array when the message has none',
+  '- action "ADD" is for an announced EXTRA class ("extra class", "makeup class", "special lecture",',
+  '  "additional class"): a brand-new slot that may not exist in the regular timetable at all',
   '- courseText: copy the course as written (typos included); null when no course is identifiable',
   '- dateExpression: copy the date words as written ("today", "kal", "tomorrow", "Monday"); never compute a date',
   '- timeExpression: copy the time words as written ("2 PM", "11:00-12:00", "11 instead of 9"); null when absent',
@@ -18,8 +20,12 @@ export const EXTRACTION_SYSTEM_INSTRUCTION = [
   '- certainty: your own confidence from 0 to 1; low when the message is unclear',
   '- never invent a subject, date, time or room that is not in the message',
   '- an announced ADDITIONAL class ("extra class", "makeup class", "special lecture") is a timetable',
-  '  change too: extract it with the stated course, date and time even when that date has no',
-  '  regular class yet, and set certainty to at most 0.6 because nothing can be cancelled',
+  '  change too: extract it with action "ADD" using the stated course, date and time even when that date',
+  '  has no regular class yet, and give it a normal-high certainty (0.85 to 0.95) when the announcement',
+  '  is unambiguous - it is still a real timetable change even though nothing else has to be cancelled',
+  '- when the model needs a value the message does not state (a date, an end time, a room for an ADD),',
+  '  make the safe assumption instead of returning null: use "today" for a missing date, extend a lone',
+  '  start time to a one-hour range ("2 PM" -> "2 PM to 3 PM"), and "Usual Room" for a missing room',
   '- Hinglish is expected: understand "kal" (tomorrow), "aaj" (today), "cancel hai", "band", "shift"',
   '- ignore greetings, jokes and unrelated chatter',
 ].join('\n');

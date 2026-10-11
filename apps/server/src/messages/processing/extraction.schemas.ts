@@ -19,8 +19,8 @@ export const extractedChangeSchema = z.object({
   room: z.string().trim().min(1).max(40).nullable().default(null),
   /** Hedged wording ("I think ...", "maybe", "probably"). */
   isAmbiguous: z.boolean().default(false),
-  /** The model's own certainty, 0..1. */
-  certainty: z.number().min(0).max(1),
+  /** The model's own certainty, 0..1 (assumed high when the model omits it). */
+  certainty: z.number().min(0).max(1).default(0.9),
   /** Short justification shown in the review UI. */
   reason: z.string().trim().min(1).max(200).nullable().default(null),
 });

@@ -62,14 +62,24 @@ export async function getEffectiveDay(
     status: { $in: APPLIED_STATUSES },
   });
 
-  const courseIds = [...new Set(baseline.map((entry) => String(entry.courseId)))];
-  const courses = await Course.find({ _id: { $in: courseIds } });
+  // ADD changes carry no targetEntryId - they are brand-new slots to append.
+  const addedChanges = changes.filter((change) => change.action === 'ADD' && !change.targetEntryId);
+
+  const courseIds = new Set(baseline.map((entry) => String(entry.courseId)));
+  for (const change of addedChanges) {
+    if (change.courseId) {
+      courseIds.add(String(change.courseId));
+    }
+  }
+  const courses = await Course.find({ _id: { $in: [...courseIds] } });
   const coursesById = new Map(courses.map((course) => [String(course._id), course]));
 
   const entries: EffectiveEntry[] = baseline.map((entry) => {
     const course = coursesById.get(String(entry.courseId));
     const change = changes.find(
-      (candidate) => String(candidate.targetEntryId) === String(entry._id),
+      (candidate) =>
+        candidate.targetEntryId !== undefined &&
+        String(candidate.targetEntryId) === String(entry._id),
     );
     const applied = change?.newValue ?? {};
 
@@ -96,5 +106,27 @@ export async function getEffectiveDay(
     };
   });
 
-  return { occurrenceDate, version, entries };
+  // Extra classes are appended as brand-new slots on the day they were added.
+  const addedEntries: EffectiveEntry[] = addedChanges.map((change) => {
+    const course = change.courseId ? coursesById.get(String(change.courseId)) : undefined;
+    const applied = change.newValue ?? {};
+
+    return {
+      entryId: change.id,
+      courseId: change.courseId ? String(change.courseId) : '',
+      courseCode: course?.code ?? null,
+      courseName: course?.name ?? null,
+      day: weekday,
+      startTime: applied.startTime ?? '00:00',
+      endTime: applied.endTime ?? '00:00',
+      room: applied.room ?? null,
+      kind: applied.kind ?? 'LECTURE',
+      status: 'SCHEDULED' as EffectiveStatus,
+      changeId: change.id,
+      changed: true,
+      previousStartTime: null,
+    };
+  });
+
+  return { occurrenceDate, version, entries: [...entries, ...addedEntries] };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Types } from 'mongoose';
 import { StubProvider } from '../../llm/stub.provider';
 import type { LlmCompletionRequest, LlmCompletionResult, LlmProvider } from '../../llm/types';
 import { AuditLog, RawMessage, ScheduleChange } from '../../models/index';
@@ -11,6 +12,7 @@ import {
   seedTimetableAccount,
 } from '../../test-utils/seed';
 import { ingestMessage } from '../ingestion.service';
+import { getEffectiveDay } from '../../timetable/effective.service';
 import { processRawMessage } from './processor';
 
 useTestDatabase('classsync_test_processor');
@@ -87,7 +89,7 @@ describe('auto-apply (>= 0.90)', () => {
     const reloaded = await RawMessage.findById(message.id);
     expect(reloaded?.status).toBe('APPLIED');
     expect(reloaded?.llmMeta?.provider).toBe('stub');
-    expect(reloaded?.llmMeta?.promptVersion).toBe('extract-v1');
+    expect(reloaded?.llmMeta?.promptVersion).toBe('extract-v2');
   });
 
   it('resolves a typo to the real course before applying', async () => {
@@ -107,6 +109,69 @@ describe('auto-apply (>= 0.90)', () => {
     );
 
     expect(result.changes[0]?.occurrenceDate).toBe('2026-03-10');
+  });
+});
+
+describe('extra classes (ADD)', () => {
+  it('creates a brand-new slot with smart defaults instead of rejecting', async () => {
+    const { result } = await run('DBMS extra class today at 2 PM', {
+      changes: [
+        change({
+          action: 'ADD',
+          courseText: 'DBMS',
+          dateExpression: null,
+          timeExpression: '2 PM',
+          room: null,
+        }),
+      ],
+    });
+
+    expect(result.status).toBe('APPLIED');
+    const [outcome] = result.changes;
+    expect(outcome?.decision).toBe('AUTO_APPLY');
+    // No date phrase at all - the extra class lands on the message's own day.
+    expect(outcome?.occurrenceDate).toBe('2026-03-10');
+
+    const stored = await ScheduleChange.findById(outcome?.changeId ?? '');
+    expect(stored?.action).toBe('ADD');
+    // An extra class has no baseline slot to point at.
+    expect(stored?.targetEntryId).toBeUndefined();
+    expect(stored?.newValue?.startTime).toBe('14:00');
+    expect(stored?.newValue?.endTime).toBe('15:00');
+    expect(stored?.newValue?.room).toBe('Usual Room');
+  });
+
+  it('applies a weekend extra class even though the baseline only has weekday slots', async () => {
+    const { result } = await run('DBMS extra class on Saturday at 10 AM', {
+      changes: [
+        change({
+          action: 'ADD',
+          courseText: 'DBMS',
+          dateExpression: 'Saturday',
+          timeExpression: '10 AM',
+        }),
+      ],
+    });
+
+    expect(result.status).toBe('APPLIED');
+    expect(result.changes[0]?.decision).toBe('AUTO_APPLY');
+    expect(result.changes[0]?.occurrenceDate).toBe('2026-03-14');
+    expect(await ScheduleChange.countDocuments({ action: 'ADD' })).toBe(1);
+  });
+
+  it('shows the extra class in the effective timetable', async () => {
+    const { account, result } = await run('DBMS extra class today at 2 PM', {
+      changes: [change({ action: 'ADD', courseText: 'DBMS', timeExpression: '2 PM', room: null })],
+    });
+
+    const day = await getEffectiveDay(new Types.ObjectId(account.userId), '2026-03-10');
+    const added = day.entries.find((entry) => entry.changeId === result.changes[0]?.changeId);
+
+    expect(added?.courseCode).toBe('DBMS');
+    expect(added?.startTime).toBe('14:00');
+    expect(added?.endTime).toBe('15:00');
+    expect(added?.room).toBe('Usual Room');
+    expect(added?.status).toBe('SCHEDULED');
   });
 });
 
@@ -164,6 +229,17 @@ describe('rejection (< 0.70)', () => {
     });
 
     expect(result.changes[0]?.decision).toBe('REJECT');
+  });
+
+  it('surfaces the rejection reason on the raw message instead of dropping it', async () => {
+    const { message } = await run('MATH301 lecture postponed to Monday', {
+      changes: [change({ courseText: 'MATH301' })],
+    });
+
+    const reloaded = await RawMessage.findById(message.id);
+    expect(reloaded?.status).toBe('REJECTED');
+    expect(reloaded?.processingErrors.length).toBeGreaterThan(0);
+    expect(reloaded?.processingErrors[0]).toContain('no course');
   });
 });
 

@@ -55,7 +55,9 @@ export async function listChanges(
   if (options.status) {
     filter.status = options.status;
   }
-  return ScheduleChange.find(filter).sort({ createdAt: -1 }).limit(options.limit ?? 100);
+  return ScheduleChange.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(options.limit ?? 100);
 }
 
 export async function findChangeById(
@@ -105,7 +107,7 @@ export async function approveChange(
 
   const payload: ScheduleChangePayload = {
     changeId: change.id,
-    entryId: String(change.targetEntryId),
+    entryId: change.targetEntryId ? String(change.targetEntryId) : change.id,
     occurrenceDate: change.occurrenceDate,
     courseCode: null,
     action: change.action,
@@ -150,7 +152,7 @@ export async function rejectChange(
 
   publishReviewResolved(String(userId), {
     changeId: change.id,
-    entryId: String(change.targetEntryId),
+    entryId: change.targetEntryId ? String(change.targetEntryId) : change.id,
     occurrenceDate: change.occurrenceDate,
     courseCode: null,
     action: change.action,
@@ -199,7 +201,7 @@ export async function revertChange(
 
   publishChangeReverted(String(userId), {
     changeId: change.id,
-    entryId: String(change.targetEntryId),
+    entryId: change.targetEntryId ? String(change.targetEntryId) : change.id,
     occurrenceDate: change.occurrenceDate,
     courseCode: null,
     action: change.action,
@@ -209,7 +211,7 @@ export async function revertChange(
   });
   publishScheduleUpdated(String(userId), {
     changeId: change.id,
-    entryId: String(change.targetEntryId),
+    entryId: change.targetEntryId ? String(change.targetEntryId) : change.id,
     occurrenceDate: change.occurrenceDate,
     courseCode: null,
     action: change.action,

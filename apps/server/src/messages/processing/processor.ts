@@ -3,6 +3,7 @@ import type {
   PipelineStatus,
   ScheduleChangeAction,
   ScheduleChangePayload,
+  TimetableEntryKind,
 } from '@classsync/shared';
 import { ApiError } from '../../errors';
 import { createLlmProvider } from '../../llm/factory';
@@ -39,11 +40,17 @@ import {
 import {
   addMinutes,
   isoWeekdayOf,
+  messageLocalDate,
   minutesBetween,
   resolveOccurrenceDate,
   resolveTimeExpression,
 } from './resolution';
 import { findConflict, findTargetEntry } from './validation';
+
+/** Room assumed for an extra class when the message names none. */
+const DEFAULT_EXTRA_CLASS_ROOM = 'Usual Room';
+/** Duration (minutes) assumed for an extra class when the message gives only a start time. */
+const EXTRA_CLASS_DEFAULT_DURATION_MIN = 60;
 
 export interface ChangeOutcome {
   changeId: string | null;
@@ -103,10 +110,15 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
   const courseCode = courseMatch.hint.code;
 
   // 2. Date resolution - anchored on the MESSAGE timestamp in the user timezone.
-  const occurrenceDate = resolveOccurrenceDate(draft.dateExpression, {
+  const isAdd = draft.action === 'ADD';
+  const resolvedDate = resolveOccurrenceDate(draft.dateExpression, {
     messageTimestamp: message.timestamp,
     timezone,
   });
+  // An announced extra class with no date is assumed to land on the message's own day.
+  const occurrenceDate =
+    resolvedDate ??
+    (isAdd ? messageLocalDate({ messageTimestamp: message.timestamp, timezone }) : null);
   if (!occurrenceDate) {
     const { score } = scoreConfidence({
       certainty: draft.certainty,
@@ -130,21 +142,19 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
     };
   }
 
-  // 3. Time resolution (only RESCHEDULE_TIME consumes it).
+  // 3. Time resolution (RESCHEDULE_TIME and ADD consume it).
   const time = resolveTimeExpression(draft.timeExpression);
   const missingRequiredField =
     (draft.action === 'CHANGE_ROOM' && !draft.room) ||
-    (draft.action === 'RESCHEDULE_TIME' && !time?.startTime);
+    ((draft.action === 'RESCHEDULE_TIME' || isAdd) && !time?.startTime);
 
-  // 4. Target baseline entry for that course and weekday.
-  const target = findTargetEntry(
-    entries,
-    courseMatch.hint.id,
-    occurrenceDate,
-    time?.mentioned ?? [],
-  );
-  const entry = target.entry;
-  if (!entry) {
+  // 4. Target baseline entry for that course and weekday. An ADD creates a brand-new
+  //    slot (an extra/makeup class, often on a weekend), so it never needs an existing entry.
+  const target = isAdd
+    ? null
+    : findTargetEntry(entries, courseMatch.hint.id, occurrenceDate, time?.mentioned ?? []);
+  const entry = target?.entry ?? null;
+  if (!isAdd && !entry) {
     const { score } = scoreConfidence({
       certainty: draft.certainty,
       courseMatchScore: courseMatch.score,
@@ -162,18 +172,57 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
       confidence: score,
       courseCode,
       occurrenceDate,
-      note: target.reason ?? 'no matching baseline class',
+      note: target?.reason ?? 'no matching baseline class',
     };
   }
 
-  // 5. Proposed state (baseline + this change).
-  let startTime = entry.startTime;
-  let endTime = entry.endTime;
-  let room = entry.room;
+  // 5. Proposed state (baseline + this change, or a brand-new extra-class slot).
+  let startTime: string;
+  let endTime: string;
+  let room: string | undefined;
+  let kind: TimetableEntryKind;
 
-  if (draft.action === 'RESCHEDULE_TIME' && time?.startTime) {
+  if (entry) {
+    startTime = entry.startTime;
+    endTime = entry.endTime;
+    room = entry.room;
+    kind = entry.kind;
+
+    if (draft.action === 'RESCHEDULE_TIME' && time?.startTime) {
+      startTime = time.startTime;
+      endTime =
+        time.endTime ?? addMinutes(startTime, minutesBetween(entry.startTime, entry.endTime));
+      if (endTime <= startTime) {
+        return {
+          changeId: null,
+          action: draft.action,
+          decision: 'REJECT',
+          confidence: 0,
+          courseCode,
+          occurrenceDate,
+          note: `invalid time range ${startTime}-${endTime}`,
+        };
+      }
+    }
+    if (draft.action === 'CHANGE_ROOM' && draft.room) {
+      room = draft.room;
+    }
+  } else {
+    // Extra class: there is no baseline slot to inherit from, so fill the gaps
+    // with the documented defaults instead of rejecting the change outright.
+    if (!time?.startTime) {
+      return {
+        changeId: null,
+        action: draft.action,
+        decision: 'REJECT',
+        confidence: 0,
+        courseCode,
+        occurrenceDate,
+        note: 'extra class states no start time',
+      };
+    }
     startTime = time.startTime;
-    endTime = time.endTime ?? addMinutes(startTime, minutesBetween(entry.startTime, entry.endTime));
+    endTime = time.endTime ?? addMinutes(startTime, EXTRA_CLASS_DEFAULT_DURATION_MIN);
     if (endTime <= startTime) {
       return {
         changeId: null,
@@ -185,9 +234,8 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
         note: `invalid time range ${startTime}-${endTime}`,
       };
     }
-  }
-  if (draft.action === 'CHANGE_ROOM' && draft.room) {
-    room = draft.room;
+    room = draft.room?.trim() ? draft.room : DEFAULT_EXTRA_CLASS_ROOM;
+    kind = 'LECTURE';
   }
 
   // 6. Conflict detection against the rest of that weekday.
@@ -195,13 +243,14 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
   const dayEntries =
     weekday === null ? [] : entries.filter((candidate) => candidate.dayOfWeek === weekday);
   const conflictingEntry = findConflict(dayEntries, {
-    entryId: String(entry._id),
+    entryId: entry ? String(entry._id) : '',
     startTime,
     endTime,
   });
   const hasConflict = conflictingEntry !== null;
 
-  // 7. Deterministic confidence + policy routing.
+  // 7. Deterministic confidence + policy routing. An ADD never needs an existing
+  //    target slot, so it always counts as resolved.
   const { score, factors } = scoreConfidence({
     certainty: draft.certainty,
     courseMatchScore: courseMatch.score,
@@ -218,16 +267,20 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
   const change = await ScheduleChange.create({
     userId: message.userId,
     rawMessageId: message._id,
-    targetEntryId: entry._id,
+    // An ADD has no baseline entry yet - the change itself defines the new slot.
+    targetEntryId: entry?._id,
+    courseId: courseMatch.hint.id,
     occurrenceDate,
     action: draft.action,
-    oldValue: {
-      startTime: entry.startTime,
-      endTime: entry.endTime,
-      room: entry.room,
-      kind: entry.kind,
-    },
-    newValue: { startTime, endTime, room, kind: entry.kind },
+    oldValue: entry
+      ? {
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          room: entry.room,
+          kind: entry.kind,
+        }
+      : undefined,
+    newValue: { startTime, endTime, room, kind },
     confidence: score,
     confidenceFactors: {
       certainty: factors.certainty,
@@ -251,25 +304,28 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
       actor: 'AI',
       action: 'CHANGE_APPLIED',
       changeId: change._id,
-      targetEntryId: entry._id,
+      targetEntryId: entry?._id,
       occurrenceDate,
-      beforeSnapshot: {
-        entryId: String(entry._id),
-        courseId: String(entry.courseId),
-        dayOfWeek: entry.dayOfWeek,
-        startTime: entry.startTime,
-        endTime: entry.endTime,
-        room: entry.room ?? null,
-        kind: entry.kind,
-      },
+      beforeSnapshot: entry
+        ? {
+            entryId: String(entry._id),
+            courseId: String(entry.courseId),
+            dayOfWeek: entry.dayOfWeek,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+            room: entry.room ?? null,
+            kind: entry.kind,
+          }
+        : undefined,
       afterSnapshot: {
-        entryId: String(entry._id),
-        courseId: String(entry.courseId),
-        dayOfWeek: entry.dayOfWeek,
+        // An ADD has no entry id yet - the change id stands in for the new slot.
+        entryId: entry ? String(entry._id) : change.id,
+        courseId: courseMatch.hint.id,
+        dayOfWeek: entry?.dayOfWeek ?? weekday ?? undefined,
         startTime,
         endTime,
         room: room ?? null,
-        kind: entry.kind,
+        kind,
       },
       reason: draft.reason ?? 'auto-applied',
     });
@@ -277,7 +333,7 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
     // Real-time: tell the UI the effective schedule just changed.
     const payload: ScheduleChangePayload = {
       changeId: change.id,
-      entryId: String(entry._id),
+      entryId: entry ? String(entry._id) : change.id,
       occurrenceDate,
       courseCode,
       action: draft.action,
@@ -295,7 +351,7 @@ async function processDraft(context: DraftContext): Promise<ChangeOutcome> {
   if (decision === 'REVIEW') {
     publishReviewRequired(String(message.userId), {
       changeId: change.id,
-      entryId: String(entry._id),
+      entryId: entry ? String(entry._id) : change.id,
       occurrenceDate,
       courseCode,
       action: draft.action,
@@ -391,8 +447,22 @@ export async function processRawMessage(
     );
   }
 
+  // Every non-applied outcome is surfaced on the message so the UI and the logs
+  // can explain WHY something was rejected or queued for review.
+  const processingErrors = changes
+    .filter((outcome) => outcome.decision !== 'AUTO_APPLY')
+    .map(
+      (outcome) =>
+        `${outcome.action} for ${outcome.courseCode ?? 'unknown course'} on ${
+          outcome.occurrenceDate ?? '(no date)'
+        }: ${outcome.note} (confidence ${outcome.confidence})`,
+    );
+  for (const processingError of processingErrors) {
+    logger.warn({ messageId, processingError }, 'schedule change not auto-applied');
+  }
+
   const status = decideMessageStatus(changes);
-  await updateRawMessageStatus(messageId, status, []);
+  await updateRawMessageStatus(messageId, status, processingErrors);
   await setRawMessageLlmMeta(messageId, {
     provider: provider.name,
     model: extraction.model,
