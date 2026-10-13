@@ -18,16 +18,16 @@ asks you about the rest — all in real time.
 
 ## What it does
 
-| Capability | Details |
-| --- | --- |
-| **Timetable import** | CSV, JSON and **timetable photos** (Gemini vision) → one validated row schema |
-| **Immutable baseline** | Your confirmed timetable can never be overwritten — enforced in the model layer |
-| **Message ingestion** | Manual input, a 30-message simulated WhatsApp scenario and a live **Twilio WhatsApp Sandbox webhook**, behind a pluggable adapter contract |
-| **AI pipeline** | Relevance gate → Gemini extraction → date resolution → conflict detection → confidence routing |
-| **Human in the loop** | Anything uncertain (0.70–0.89) is queued for review with the raw message side by side |
-| **Realtime UI** | Socket.IO pushes cancellations, shifts and review items to every view, no refresh |
-| **Full audit trail** | Every mutation is append-only; any applied change can be reverted |
-| **Deduplication** | Identical messages are hashed per account and never processed twice |
+| Capability             | Details                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Timetable import**   | CSV, JSON and **timetable photos** (Gemini vision) → one validated row schema                                                                       |
+| **Immutable baseline** | Your confirmed timetable can never be overwritten — enforced in the model layer                                                                     |
+| **Message ingestion**  | Manual input, a 30-message simulated WhatsApp scenario and a live **WhatsApp linked device** (whatsapp-web.js), behind a pluggable adapter contract |
+| **AI pipeline**        | Relevance gate → Gemini extraction → date resolution → conflict detection → confidence routing                                                      |
+| **Human in the loop**  | Anything uncertain (0.70–0.89) is queued for review with the raw message side by side                                                               |
+| **Realtime UI**        | Socket.IO pushes cancellations, shifts and review items to every view, no refresh                                                                   |
+| **Full audit trail**   | Every mutation is append-only; any applied change can be reverted                                                                                   |
+| **Deduplication**      | Identical messages are hashed per account and never processed twice                                                                                 |
 
 ## Architecture
 
@@ -35,7 +35,7 @@ asks you about the rest — all in real time.
 flowchart LR
   M[Manual adapter] --> Q[Ingestion queue]
   S[Simulation adapter] --> Q
-  WA[WhatsApp webhook, Twilio Sandbox] --> Q
+  WA[WhatsApp linked device] --> Q
   Q --> D[(RawMessage)]
   Q --> P[Processing queue]
   P --> W[Background worker]
@@ -58,7 +58,7 @@ flowchart LR
 
 ## Baseline vs Effective (the core idea)
 
-- **Baseline** — `TimetableEntry` documents are your *original, confirmed* timetable. Once a version is
+- **Baseline** — `TimetableEntry` documents are your _original, confirmed_ timetable. Once a version is
   locked it is **immutable**: saves, updates and deletes are refused by the schema itself
   (`BaselineImmutableError`), not by application-level checks. The only way forward is a new
   `baselineVersion`.
@@ -68,43 +68,43 @@ flowchart LR
   keeps both the application and the revert.
 
 A cancelled class therefore can never corrupt your timetable: the pipeline only ever writes
-`ScheduleChange` documents *next to* the baseline.
+`ScheduleChange` documents _next to_ the baseline.
 
 ## The processing pipeline
 
-| Stage | What happens | On failure |
-| --- | --- | --- |
-| Normalization | event validated against the shared `MessageEvent` contract | rejected at the boundary |
-| Relevance | course/alias plus change-intent regex (English **and** Hinglish) | `IGNORED` — **no LLM call** |
-| Extraction | Gemini returns strict JSON, one repair pass if it deviates | `FAILED` + `processingErrors` |
-| Resolution | `today`, `kal`, `tomorrow`, weekdays, `2 PM`, `11 instead of 9` resolved against the **message timestamp** in the user's timezone | missing values stay `null` |
-| Validation | subject must match a baseline course (code, name, alias or typo-tolerant fuzzy match) and resolve to exactly one class | rejected with a reason |
-| Conflicts | proposed window compared with the rest of that weekday | forced to review, never auto-applied |
-| Scoring | deterministic and explainable; factors stored on the change | — |
-| Routing | `>= 0.90` apply · `0.70–0.89` review · `< 0.70` reject | audit entry for applied changes |
+| Stage         | What happens                                                                                                                      | On failure                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Normalization | event validated against the shared `MessageEvent` contract                                                                        | rejected at the boundary             |
+| Relevance     | course/alias plus change-intent regex (English **and** Hinglish)                                                                  | `IGNORED` — **no LLM call**          |
+| Extraction    | Gemini returns strict JSON, one repair pass if it deviates                                                                        | `FAILED` + `processingErrors`        |
+| Resolution    | `today`, `kal`, `tomorrow`, weekdays, `2 PM`, `11 instead of 9` resolved against the **message timestamp** in the user's timezone | missing values stay `null`           |
+| Validation    | subject must match a baseline course (code, name, alias or typo-tolerant fuzzy match) and resolve to exactly one class            | rejected with a reason               |
+| Conflicts     | proposed window compared with the rest of that weekday                                                                            | forced to review, never auto-applied |
+| Scoring       | deterministic and explainable; factors stored on the change                                                                       | —                                    |
+| Routing       | `>= 0.90` apply · `0.70–0.89` review · `< 0.70` reject                                                                            | audit entry for applied changes      |
 
 ### Confidence policy
 
-| Score | Meaning | Result |
-| --- | --- | --- |
-| `>= 0.90` | certain, unambiguous, no conflict | applied automatically, audit entry written |
-| `0.70 – 0.89` | plausible but hedged, conflicting or incomplete | queued for your review |
-| `< 0.70` | unknown subject or low certainty | stored as `REJECTED` for the audit trail |
+| Score         | Meaning                                         | Result                                     |
+| ------------- | ----------------------------------------------- | ------------------------------------------ |
+| `>= 0.90`     | certain, unambiguous, no conflict               | applied automatically, audit entry written |
+| `0.70 – 0.89` | plausible but hedged, conflicting or incomplete | queued for your review                     |
+| `< 0.70`      | unknown subject or low certainty                | stored as `REJECTED` for the audit trail   |
 
 Penalties: ambiguity 0.25 · conflict 0.20 · missing date 0.15 · missing required field 0.20 · a course
 identity needing 2+ character edits 0.15.
 
 ## Tech stack
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | React 19, TypeScript 6, Vite 8, TailwindCSS v4, React Router 7, socket.io-client |
-| Backend | Node 24, Express 5, TypeScript, Socket.IO 4, Mongoose 9 |
-| Data | MongoDB (in-memory server in tests), Luxon for IANA timezones |
-| AI | `@google/genai` (e.g. `gemini-1.5-flash`) behind an internal `LlmProvider`, Zod contracts |
-| Auth | `jose` (HS256 JWT), scrypt password hashing (Node built-in) |
-| Observability | pino with field redaction, express-rate-limit |
-| Quality | ESLint 10, Prettier, Vitest 5, tsup |
+| Layer         | Technology                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| Frontend      | React 19, TypeScript 6, Vite 8, TailwindCSS v4, React Router 7, socket.io-client          |
+| Backend       | Node 24, Express 5, TypeScript, Socket.IO 4, Mongoose 9                                   |
+| Data          | MongoDB (in-memory server in tests), Luxon for IANA timezones                             |
+| AI            | `@google/genai` (e.g. `gemini-1.5-flash`) behind an internal `LlmProvider`, Zod contracts |
+| Auth          | `jose` (HS256 JWT), scrypt password hashing (Node built-in)                               |
+| Observability | pino with field redaction, express-rate-limit                                             |
+| Quality       | ESLint 10, Prettier, Vitest 5, tsup                                                       |
 
 ## Repository layout
 
@@ -138,41 +138,41 @@ npm run dev
 ```
 
 Open <http://localhost:5173>, sign in with the seeded account, open **Messages** and press
-*Send next simulated message* — the dashboard and timetable update live.
+_Send next simulated message_ — the dashboard and timetable update live.
 
 ### Root scripts
 
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | API + web with hot reload |
-| `npm run build` | Production bundles (tsup for the server, Vite for the web) |
-| `npm test` | Vitest across every workspace |
-| `npm run typecheck` | Strict TypeScript check (no `any`, `noUncheckedIndexedAccess`) |
-| `npm run lint` / `npm run format` | ESLint / Prettier |
-| `npm run seed -w @classsync/server` | Reset and re-create the demo account and baseline |
+| Script                              | Purpose                                                        |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `npm run dev`                       | API + web with hot reload                                      |
+| `npm run build`                     | Production bundles (tsup for the server, Vite for the web)     |
+| `npm test`                          | Vitest across every workspace                                  |
+| `npm run typecheck`                 | Strict TypeScript check (no `any`, `noUncheckedIndexedAccess`) |
+| `npm run lint` / `npm run format`   | ESLint / Prettier                                              |
+| `npm run seed -w @classsync/server` | Reset and re-create the demo account and baseline              |
 
 ## Environment variables
 
 Every value is parsed and validated with Zod at boot; the server refuses to start on invalid config.
 See `apps/server/.env.example`.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PORT` | `4000` | API port |
-| `WEB_ORIGIN` | `http://localhost:5173` | allowed CORS origin |
-| `MONGODB_URI` | – (required) | database connection string, read from `process.env` only |
-| `JWT_SECRET` | `dev-secret-change-me` | JWT signing key — **must** be changed in production |
-| `JWT_EXPIRES_IN` | `7d` | access token lifetime |
-| `TZ_DEFAULT` | `Asia/Kolkata` | default user timezone for date resolution |
-| `LLM_PROVIDER` | `stub` | `stub`, `gemini`, `openai` or `anthropic` |
-| `LLM_API_KEY` | – | key for the selected provider (required for `gemini`) |
-| `LLM_MODEL` | `gemini-3.8-flash` for Gemini | model id (must be one your key can access) |
-| `LOG_LEVEL` | `info` | pino level (`silent` disables logging) |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | rate limit window |
-| `AUTH_RATE_LIMIT_MAX` | `10` | register/login requests per window per IP |
-| `MESSAGE_RATE_LIMIT_MAX` | `60` | ingestion requests per window per IP |
-| `WORKER_ENABLED` | `true` | background worker that runs the pipeline |
-| `WORKER_INTERVAL_MS` | `4000` | worker poll interval |
+| Variable                 | Default                       | Purpose                                                  |
+| ------------------------ | ----------------------------- | -------------------------------------------------------- |
+| `PORT`                   | `4000`                        | API port                                                 |
+| `WEB_ORIGIN`             | `http://localhost:5173`       | allowed CORS origin                                      |
+| `MONGODB_URI`            | – (required)                  | database connection string, read from `process.env` only |
+| `JWT_SECRET`             | `dev-secret-change-me`        | JWT signing key — **must** be changed in production      |
+| `JWT_EXPIRES_IN`         | `7d`                          | access token lifetime                                    |
+| `TZ_DEFAULT`             | `Asia/Kolkata`                | default user timezone for date resolution                |
+| `LLM_PROVIDER`           | `stub`                        | `stub`, `gemini`, `openai` or `anthropic`                |
+| `LLM_API_KEY`            | –                             | key for the selected provider (required for `gemini`)    |
+| `LLM_MODEL`              | `gemini-3.8-flash` for Gemini | model id (must be one your key can access)               |
+| `LOG_LEVEL`              | `info`                        | pino level (`silent` disables logging)                   |
+| `RATE_LIMIT_WINDOW_MS`   | `60000`                       | rate limit window                                        |
+| `AUTH_RATE_LIMIT_MAX`    | `10`                          | register/login requests per window per IP                |
+| `MESSAGE_RATE_LIMIT_MAX` | `60`                          | ingestion requests per window per IP                     |
+| `WORKER_ENABLED`         | `true`                        | background worker that runs the pipeline                 |
+| `WORKER_INTERVAL_MS`     | `4000`                        | worker poll interval                                     |
 
 ## Using the demo simulator
 
@@ -181,9 +181,9 @@ time shifts, online classes, typos (`DBS` for DBMS), Hinglish, ambiguity
 (`I think DBMS is cancelled`), a self-contradicting follow-up and pure chatter.
 
 1. **Seed or import a baseline** and lock it (`npm run seed`, or import CSV/JSON/a photo and press
-   *Lock*). Without a locked baseline the pipeline has nothing to validate against and rejects messages.
-2. Open **Messages** → *Demo simulator*.
-3. Press **Send next simulated message** (or *Replay all* / *Reset scenario*).
+   _Lock_). Without a locked baseline the pipeline has nothing to validate against and rejects messages.
+2. Open **Messages** → _Demo simulator_.
+3. Press **Send next simulated message** (or _Replay all_ / _Reset scenario_).
 4. Watch it happen:
    - `DBMS class cancelled today` → **auto-applied**; the class is struck through everywhere, instantly.
    - `DBMS lecture shifted to 2 PM today` → applied as `11:00 → 14:00` with an indigo marker.
@@ -205,33 +205,26 @@ curl -X POST http://localhost:4000/api/messages/simulate \
 Duplicates are ignored: replaying the same scripted message returns the existing record instead of
 processing it twice.
 
-## Receiving real WhatsApp messages (Twilio Sandbox)
+## Receiving real WhatsApp messages (Linked Device)
 
-`POST /api/webhook/whatsapp` accepts deliveries from **Twilio's WhatsApp Sandbox** (form-encoded
-`Body` and `From`, plus optional `MessageSid`, `SmsTimestamp` and `ProfileName` — an identical JSON
-body works too). The message is stored with `sourceKind: "whatsapp"` and a `200 OK` is returned
-immediately; the background worker then runs the normal Groq + MongoDB pipeline, exactly like the
-manual and simulator routes.
+The server **is** a WhatsApp client: `whatsapp-web.js` runs the API process as a linked device
+(WhatsApp Web), so there is no third party, no public URL and no webhook in the path. Inbound chats
+are mapped straight to the seeded demo account and pushed into the same ingestion queue as
+`/messages/manual` — the background worker then runs the normal Groq + MongoDB pipeline.
 
-1. Seed the demo account (`npm run seed -w @classsync/server`) — for now every sandbox sender maps
-   to it.
-2. Expose your API publicly (e.g. `ngrok http 4000`) and, in the Twilio Console under the sandbox,
-   set *When a message comes in* to `POST https://<your-host>/api/webhook/whatsapp`.
-3. Join the sandbox from your phone and send a message — or skip the phone and test locally:
+1. Seed the demo account (`npm run seed -w @classsync/server`) — for now every sender maps to it.
+2. Run `npm run dev`. On first run the server prints a **QR code in the terminal**.
+3. On your phone open **WhatsApp → Settings → Linked Devices → Link a device** and scan it.
+4. Send a message to the linked account from any chat — it lands on the dashboard in seconds.
 
-```bash
-curl -X POST http://localhost:4000/api/webhook/whatsapp \
-  -d "Body=DBMS class cancelled today" \
-  -d "From=whatsapp:+15550001111" \
-  -d "MessageSid=SM-demo-1" \
-  -d "SmsTimestamp=Tue, 10 Mar 2026 09:15:00 +0000"
-```
+The session is persisted with `LocalAuth` under `apps/server/.wwebjs_auth/` (git-ignored), so after
+the first pairing, restarts reconnect silently — **you only scan the QR once**. Delete that folder
+(or unlink the device) to start over.
 
-A retried delivery (same `MessageSid`) is acknowledged with `200` but never processed twice, and
-`SmsTimestamp` keeps relative-date phrases ("today", "kal") anchored to the real send time. The route
-is deliberately unauthenticated — Twilio cannot send a JWT — so it is rate-limited, Zod-validated
-and deduplicated instead. The sender→user mapping is hardcoded to the demo account until per-phone
-accounts land.
+Details: the `@c.us` suffix is stripped from `msg.from` to get the phone number, the sender's
+profile name is resolved via `msg.getContact()` when reachable (falling back to the number), and
+the usual content hash keeps replays from processing twice. The sender→user mapping stays hardcoded
+to the demo account until per-phone accounts land.
 
 ## Testing
 
@@ -254,24 +247,24 @@ receives `schedule.cancelled` when a change auto-applies.
   `imageBase64` and `metadata` at write time — credentials and message bodies never reach the log.
 - Timetable photos arrive as base64 (25 MB route limit) behind a Zod contract.
 - The baseline is immutable at the database layer: no request path can rewrite confirmed history.
-- The WhatsApp webhook is the only unauthenticated route; it is rate-limited, Zod-validated,
-  deduplicated by `MessageSid` and maps every sender to the seeded demo account.
+- The WhatsApp session lives in a git-ignored `LocalAuth` folder — treat it like a credential and
+  unlink the device from WhatsApp if a machine is ever compromised.
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| `npm` blocked by PowerShell policy | use `npm.cmd`, or set an execution policy |
-| `db: "disconnected"` in `/api/health` | start MongoDB or point `MONGODB_URI` at an instance |
-| `429 Too many requests` | expected — wait out the window or raise the limits |
-| `503` from image import | set `LLM_PROVIDER=gemini` **and** `LLM_API_KEY` |
-| Messages stay `FAILED` | the LLM call failed — the exact API error is in `processingErrors` and the server log |
-| Socket stays "Reconnecting" | confirm the API is on :4000 and the `/socket.io` dev proxy is active |
+| Symptom                               | Fix                                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `npm` blocked by PowerShell policy    | use `npm.cmd`, or set an execution policy                                             |
+| `db: "disconnected"` in `/api/health` | start MongoDB or point `MONGODB_URI` at an instance                                   |
+| `429 Too many requests`               | expected — wait out the window or raise the limits                                    |
+| `503` from image import               | set `LLM_PROVIDER=gemini` **and** `LLM_API_KEY`                                       |
+| Messages stay `FAILED`                | the LLM call failed — the exact API error is in `processingErrors` and the server log |
+| Socket stays "Reconnecting"           | confirm the API is on :4000 and the `/socket.io` dev proxy is active                  |
 
 ## Status
 
 Phases 1–8 are complete: tooling, database layer with immutability guards, auth, timetable import,
 adapters and ingestion, the AI pipeline, the realtime web UI, hardening, and a real WhatsApp
-webhook (Twilio Sandbox → ingestion queue). The optional Android
+linked device (`whatsapp-web.js` → ingestion queue). The optional Android
 notification scraper is the only intentionally deferred component — it plugs in as another
 `MessageSourceAdapter`.

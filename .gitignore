@@ -28,3 +28,7 @@ Thumbs.db
 
 # Scratch files (screenshots, temp scripts/logs)
 .tmp-*
+
+# WhatsApp linked-device session (LocalAuth) - device credentials, never commit
+.wwebjs_auth/
+.wwebjs_cache/

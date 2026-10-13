@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from './db/connection';
 import { messageAdapters } from './messages/adapters';
 import { attachSocketServer } from './realtime/socket';
 import { startIngestionWorker, stopIngestionWorker } from './workers/ingestion.worker';
+import { startWhatsAppClient, stopWhatsAppClient } from './whatsapp/whatsapp.service';
 
 const app = createApp();
 
@@ -13,6 +14,10 @@ async function start(): Promise<void> {
   // Adapters must be running before the server accepts messages.
   await messageAdapters.start();
   startIngestionWorker();
+  // WhatsApp linked device: prints a QR on first run, then reconnects silently
+  // via LocalAuth. Never awaited - pairing can take minutes and must not block
+  // the HTTP server.
+  startWhatsAppClient();
 
   try {
     await connectDatabase({ uri: env.MONGODB_URI });
@@ -42,6 +47,7 @@ async function start(): Promise<void> {
   function shutdown(signal: NodeJS.Signals): void {
     logger.info(`[classsync-server] ${signal} received - shutting down`);
     void messageAdapters.stop();
+    stopWhatsAppClient();
     stopIngestionWorker();
     httpServer.close(() => {
       void disconnectDatabase().finally(() => {
