@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_GROQ_MODEL,
-  GROQ_BASE_URL,
-  OpenAIProvider,
-} from './openai.provider';
+import { DEFAULT_GROQ_MODEL, GROQ_BASE_URL, OpenAIProvider } from './openai.provider';
 
 const { create, ctorOptions } = vi.hoisted(() => ({
   create: vi.fn(),

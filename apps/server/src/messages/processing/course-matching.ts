@@ -19,7 +19,10 @@ export interface CourseMatch {
 export const MIN_COURSE_MATCH_SCORE = 0.75;
 
 export function normalizeText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
 }
 
 function tokenize(value: string): string[] {
@@ -47,8 +50,7 @@ export function editDistance(a: string, b: string): number {
   for (let i = 1; i <= a.length; i += 1) {
     const current = [i];
     for (let j = 1; j <= b.length; j += 1) {
-      const substitution =
-        (previous[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1);
+      const substitution = (previous[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1);
       current[j] = Math.min(
         (previous[j] ?? Number.POSITIVE_INFINITY) + 1,
         (current[j - 1] ?? Number.POSITIVE_INFINITY) + 1,

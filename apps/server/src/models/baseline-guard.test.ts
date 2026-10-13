@@ -111,7 +111,11 @@ describe('locked baseline (immutability contract)', () => {
   it('refuses findByIdAndUpdate (findOneAndUpdate family)', async () => {
     const { first } = await seedLockedBaseline();
     const error = await captureError(
-      TimetableEntry.findByIdAndUpdate(first._id, { $set: { startTime: '12:00' } }, { returnDocument: 'after' }),
+      TimetableEntry.findByIdAndUpdate(
+        first._id,
+        { $set: { startTime: '12:00' } },
+        { returnDocument: 'after' },
+      ),
     );
     expect(error).toBeInstanceOf(BaselineImmutableError);
   });

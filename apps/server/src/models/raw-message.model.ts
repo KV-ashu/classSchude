@@ -72,4 +72,7 @@ rawMessageSchema.index({ userId: 1, timestamp: -1 });
 rawMessageSchema.index({ status: 1 });
 
 export type RawMessageDocument = HydratedDocument<RawMessageDoc>;
-export const RawMessage: Model<RawMessageDoc> = model<RawMessageDoc>('RawMessage', rawMessageSchema);
+export const RawMessage: Model<RawMessageDoc> = model<RawMessageDoc>(
+  'RawMessage',
+  rawMessageSchema,
+);

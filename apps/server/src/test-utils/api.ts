@@ -49,7 +49,9 @@ export async function registerTestUser(
     .send({ email, password, displayName: overrides.displayName ?? 'Test Student' });
 
   if (response.status !== 201) {
-    throw new Error(`registerTestUser failed (${response.status}): ${JSON.stringify(response.body)}`);
+    throw new Error(
+      `registerTestUser failed (${response.status}): ${JSON.stringify(response.body)}`,
+    );
   }
 
   const body = response.body as RegisterResponseBody;

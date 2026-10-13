@@ -9,7 +9,12 @@ useTestDatabase('classsync_test_timetable');
 const app = createApp();
 
 interface ImportBody {
-  data: { version: number; importedCount: number; createdCourseCodes: string[]; replacedDraft: boolean };
+  data: {
+    version: number;
+    importedCount: number;
+    createdCourseCodes: string[];
+    replacedDraft: boolean;
+  };
 }
 interface EntryDto {
   id: string;
@@ -47,7 +52,9 @@ async function seedTwoCourses(token: string): Promise<void> {
 
 describe('timetable CSV import', () => {
   it('requires authentication', async () => {
-    expect((await apiClient(app).post('/api/timetable/import/csv').send({ csv: VALID_CSV })).status).toBe(401);
+    expect(
+      (await apiClient(app).post('/api/timetable/import/csv').send({ csv: VALID_CSV })).status,
+    ).toBe(401);
   });
 
   it('imports a draft with alias headers, preserving room and kind', async () => {
@@ -65,7 +72,8 @@ describe('timetable CSV import', () => {
       replacedDraft: false,
     });
 
-    const entries = (await apiClient(app, account.token).get('/api/timetable/entries')).body as EntriesBody;
+    const entries = (await apiClient(app, account.token).get('/api/timetable/entries'))
+      .body as EntriesBody;
     const [first] = entries.data.entries;
     expect(entries.data.locked).toBe(false);
     expect(entries.data.entries).toHaveLength(2);
@@ -133,13 +141,16 @@ describe('timetable JSON import', () => {
     const res = await apiClient(app, account.token)
       .post('/api/timetable/import/json')
       .send({
-        entries: [{ courseCode: 'dbms', day: '3', startTime: '10:00', endTime: '10:50', room: 'C-3' }],
+        entries: [
+          { courseCode: 'dbms', day: '3', startTime: '10:00', endTime: '10:50', room: 'C-3' },
+        ],
       });
 
     expect(res.status).toBe(201);
     expect((res.body as ImportBody).data.importedCount).toBe(1);
 
-    const entries = (await apiClient(app, account.token).get('/api/timetable/entries')).body as EntriesBody;
+    const entries = (await apiClient(app, account.token).get('/api/timetable/entries'))
+      .body as EntriesBody;
     const [first] = entries.data.entries;
     expect(first).toMatchObject({ courseCode: 'DBMS', day: 3, startTime: '10:00' });
   });
@@ -182,7 +193,9 @@ describe('review flow', () => {
       throw new Error('expected a draft entry');
     }
 
-    const res = await client.patch(`/api/timetable/entries/${first.id}`).send({ startTime: '23:00' });
+    const res = await client
+      .patch(`/api/timetable/entries/${first.id}`)
+      .send({ startTime: '23:00' });
 
     expect(res.status).toBe(400);
   });

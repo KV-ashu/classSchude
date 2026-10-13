@@ -1,11 +1,7 @@
 import { env } from '../config/env';
 import { ApiError } from '../errors';
 import { GeminiProvider } from './gemini.provider';
-import {
-  DEFAULT_GROQ_MODEL,
-  GROQ_BASE_URL,
-  OpenAIProvider,
-} from './openai.provider';
+import { DEFAULT_GROQ_MODEL, GROQ_BASE_URL, OpenAIProvider } from './openai.provider';
 import { StubProvider } from './stub.provider';
 import type { LlmProvider } from './types';
 

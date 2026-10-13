@@ -53,7 +53,11 @@ describe('POST /api/messages/manual', () => {
 
     const res = await apiClient(app, account.token)
       .post('/api/messages/manual')
-      .send({ text: 'DBMS class cancelled today', senderName: 'Rahul', groupName: 'CSE-3A Official' });
+      .send({
+        text: 'DBMS class cancelled today',
+        senderName: 'Rahul',
+        groupName: 'CSE-3A Official',
+      });
 
     expect(res.status).toBe(201);
     const data = (res.body as MessageBody).data;

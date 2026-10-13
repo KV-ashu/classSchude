@@ -33,10 +33,7 @@ function entryFor(body: EffectiveBody, courseCode: string) {
 
 async function applyReschedule() {
   const account = await seedTimetableAccount();
-  const { userId, event } = buildTestEvent(
-    account.userId,
-    'DBMS lecture shifted to 2 PM today',
-  );
+  const { userId, event } = buildTestEvent(account.userId, 'DBMS lecture shifted to 2 PM today');
   const { message } = await ingestMessage(userId, event);
 
   const result = await processRawMessage(message.id, {
@@ -64,7 +61,9 @@ async function applyReschedule() {
 
 describe('effective timetable', () => {
   it('requires authentication', async () => {
-    expect((await apiClient(app).get(`/api/changes/effective?date=${EFFECTIVE_DATE}`)).status).toBe(401);
+    expect((await apiClient(app).get(`/api/changes/effective?date=${EFFECTIVE_DATE}`)).status).toBe(
+      401,
+    );
   });
 
   it('mirrors the immutable baseline while nothing is applied', async () => {
@@ -112,9 +111,8 @@ describe('revert', () => {
     expect(reverted.status).toBe(200);
     expect((reverted.body as ChangeBody).data.status).toBe('REVERTED');
 
-    const restored = (await client.get(
-      `/api/changes/effective?date=${EFFECTIVE_DATE}`,
-    )).body as EffectiveBody;
+    const restored = (await client.get(`/api/changes/effective?date=${EFFECTIVE_DATE}`))
+      .body as EffectiveBody;
     const dbms = entryFor(restored, 'DBMS');
     expect(dbms?.startTime).toBe('11:00');
     expect(dbms?.endTime).toBe('11:50');
@@ -122,9 +120,9 @@ describe('revert', () => {
 
     // History is append-only: the change document survives and both events are audited.
     expect(await ScheduleChange.countDocuments({ status: 'REVERTED' })).toBe(1);
-    const actions = (
-      await AuditLog.find({ userId: account.userId }).sort({ createdAt: 1 })
-    ).map((entry) => entry.action);
+    const actions = (await AuditLog.find({ userId: account.userId }).sort({ createdAt: 1 })).map(
+      (entry) => entry.action,
+    );
     expect(actions).toContain('CHANGE_APPLIED');
     expect(actions).toContain('CHANGE_REVERTED');
 
@@ -137,7 +135,8 @@ describe('revert', () => {
     const stranger = await seedTimetableAccount();
 
     expect(
-      (await apiClient(app, stranger.token).post(`/api/changes/${changeId}/revert`).send({})).status,
+      (await apiClient(app, stranger.token).post(`/api/changes/${changeId}/revert`).send({}))
+        .status,
     ).toBe(404);
     expect(
       (await apiClient(app, account.token).post(`/api/changes/${changeId}/revert`).send({})).status,

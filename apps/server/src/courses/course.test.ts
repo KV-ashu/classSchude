@@ -23,7 +23,10 @@ interface ErrorEnvelope {
   error: { code: string; message: string };
 }
 
-async function seedCourse(token: string, overrides: Record<string, unknown> = {}): Promise<CourseDto> {
+async function seedCourse(
+  token: string,
+  overrides: Record<string, unknown> = {},
+): Promise<CourseDto> {
   const res = await apiClient(app, token)
     .post('/api/courses')
     .send({ name: 'Database Systems', code: 'DBMS', ...overrides });

@@ -27,9 +27,7 @@ function EntryRow({ entry }: { entry: EffectiveEntry }) {
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p
-          className={`text-sm font-semibold text-slate-900 ${cancelled ? 'line-through' : ''}`}
-        >
+        <p className={`text-sm font-semibold text-slate-900 ${cancelled ? 'line-through' : ''}`}>
           {entry.courseCode} · {entry.courseName}
         </p>
         <Badge tone={statusTone(entry.status)}>{entry.status}</Badge>

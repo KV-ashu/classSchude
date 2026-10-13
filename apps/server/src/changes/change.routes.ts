@@ -4,12 +4,7 @@ import { requireAuth, requireAuthContext } from '../auth/auth.middleware';
 import type { ScheduleChangeDocument } from '../models/index';
 import { requireObjectIdParam } from '../http/require-object-id-param';
 import { getEffectiveDay } from '../timetable/effective.service';
-import {
-  approveChange,
-  listChanges,
-  rejectChange,
-  revertChange,
-} from './change.service';
+import { approveChange, listChanges, rejectChange, revertChange } from './change.service';
 import {
   effectiveQuerySchema,
   listChangesQuerySchema,

@@ -3,7 +3,11 @@ import { logger } from '../config/logger';
 import { processRawMessageSafely } from '../messages/processing/processor';
 import { listInFlightRawMessages } from '../repositories/raw-message.repository';
 import { isDatabaseConnected } from '../db/connection';
-import { drainMessageIds, enqueueMessageForProcessing, pendingMessageCount } from './processing-queue';
+import {
+  drainMessageIds,
+  enqueueMessageForProcessing,
+  pendingMessageCount,
+} from './processing-queue';
 
 let timer: NodeJS.Timeout | undefined;
 let running = false;
@@ -65,8 +69,5 @@ export function stopIngestionWorker(): void {
     timer = undefined;
   }
   running = false;
-  logger.info(
-    { stillQueued: pendingMessageCount() },
-    'ingestion worker stopped',
-  );
+  logger.info({ stillQueued: pendingMessageCount() }, 'ingestion worker stopped');
 }

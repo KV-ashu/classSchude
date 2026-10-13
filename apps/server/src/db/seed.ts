@@ -2,7 +2,14 @@ import { DEFAULT_TIMEZONE } from '@classsync/shared';
 import { hashPassword } from '../auth/password';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
-import { AuditLog, Course, RawMessage, ScheduleChange, TimetableEntry, User } from '../models/index';
+import {
+  AuditLog,
+  Course,
+  RawMessage,
+  ScheduleChange,
+  TimetableEntry,
+  User,
+} from '../models/index';
 import { appendAuditLog } from '../repositories/audit-log.repository';
 import { createCourse } from '../repositories/course.repository';
 import {
@@ -20,7 +27,12 @@ export const DEMO_ACCOUNT = {
 
 /** Courses mirror the subjects used by the simulated WhatsApp messages. */
 const DEMO_COURSES = [
-  { code: 'DBMS', name: 'Database Management Systems', aliases: ['Database', 'DBS'], defaultRoom: 'A-101' },
+  {
+    code: 'DBMS',
+    name: 'Database Management Systems',
+    aliases: ['Database', 'DBS'],
+    defaultRoom: 'A-101',
+  },
   { code: 'OS', name: 'Operating Systems', aliases: ['Operating System'], defaultRoom: 'B-202' },
   { code: 'CN', name: 'Computer Networks', aliases: ['Networks'], defaultRoom: 'B-204' },
   { code: 'ML', name: 'Machine Learning', aliases: ['ML'], defaultRoom: 'C-301' },

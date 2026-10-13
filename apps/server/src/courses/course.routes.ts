@@ -47,7 +47,10 @@ function currentUserId(req: Request): Types.ObjectId {
 }
 
 /** Loads a course that belongs to the caller, or 404 (never leaks existence). */
-async function requireOwnedCourse(courseId: string, userId: Types.ObjectId): Promise<CourseDocument> {
+async function requireOwnedCourse(
+  courseId: string,
+  userId: Types.ObjectId,
+): Promise<CourseDocument> {
   const course = await findCourseById(courseId);
   if (!course || !course.userId.equals(userId)) {
     throw ApiError.notFound('Course not found');

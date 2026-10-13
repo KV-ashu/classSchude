@@ -133,9 +133,9 @@ describe('POST /api/auth/login', () => {
 describe('requireAuth middleware', () => {
   it('rejects missing, malformed and orphaned tokens', async () => {
     expect((await anonymous.get('/api/auth/me')).status).toBe(401);
-    expect(
-      (await request(app).get('/api/auth/me').set('Authorization', 'Basic abc')).status,
-    ).toBe(401);
+    expect((await request(app).get('/api/auth/me').set('Authorization', 'Basic abc')).status).toBe(
+      401,
+    );
     expect(
       (await request(app).get('/api/auth/me').set('Authorization', 'Bearer not.a.jwt')).status,
     ).toBe(401);

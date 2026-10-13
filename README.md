@@ -12,7 +12,7 @@ asks you about the rest — all in real time.
 - [Baseline vs Effective](#baseline-vs-effective-the-core-idea)
 - [The processing pipeline](#the-processing-pipeline) · [Tech stack](#tech-stack)
 - [Getting started](#getting-started) · [Environment variables](#environment-variables)
-- [Demo simulator](#using-the-demo-simulator) · [Testing](#testing) · [Security](#security)
+- [Demo simulator](#using-the-demo-simulator) · [WhatsApp](#receiving-real-whatsapp-messages-linked-device) · [Testing](#testing) · [Security](#security)
 
 ---
 
@@ -23,7 +23,7 @@ asks you about the rest — all in real time.
 | **Timetable import**   | CSV, JSON and **timetable photos** (Gemini vision) → one validated row schema                                                                       |
 | **Immutable baseline** | Your confirmed timetable can never be overwritten — enforced in the model layer                                                                     |
 | **Message ingestion**  | Manual input, a 30-message simulated WhatsApp scenario and a live **WhatsApp linked device** (whatsapp-web.js), behind a pluggable adapter contract |
-| **AI pipeline**        | Relevance gate → Gemini extraction → date resolution → conflict detection → confidence routing                                                      |
+| **AI pipeline**        | Relevance gate → Zod-validated LLM extraction (Groq or Gemini) → date resolution → conflict detection → confidence routing                          |
 | **Human in the loop**  | Anything uncertain (0.70–0.89) is queued for review with the raw message side by side                                                               |
 | **Realtime UI**        | Socket.IO pushes cancellations, shifts and review items to every view, no refresh                                                                   |
 | **Full audit trail**   | Every mutation is append-only; any applied change can be reverted                                                                                   |
@@ -42,7 +42,7 @@ flowchart LR
   W --> PIPE[Processing pipeline]
   PIPE --> R[Local relevance filter]
   R -->|chatter| IG[IGNORED]
-  R -->|relevant| L[Gemini extraction via LlmProvider]
+  R -->|relevant| L[LLM extraction via LlmProvider: Groq or Gemini, Zod-validated]
   L --> RES[Date and time resolution: message timestamp + user tz]
   RES --> V[Validation and conflict check]
   V --> SC[Confidence scoring]
@@ -76,7 +76,7 @@ A cancelled class therefore can never corrupt your timetable: the pipeline only 
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | Normalization | event validated against the shared `MessageEvent` contract                                                                        | rejected at the boundary             |
 | Relevance     | course/alias plus change-intent regex (English **and** Hinglish)                                                                  | `IGNORED` — **no LLM call**          |
-| Extraction    | Gemini returns strict JSON, one repair pass if it deviates                                                                        | `FAILED` + `processingErrors`        |
+| Extraction    | LLM (Groq or Gemini) returns strict JSON, **Zod**-validated with one repair pass if it deviates                                   | `FAILED` + `processingErrors`        |
 | Resolution    | `today`, `kal`, `tomorrow`, weekdays, `2 PM`, `11 instead of 9` resolved against the **message timestamp** in the user's timezone | missing values stay `null`           |
 | Validation    | subject must match a baseline course (code, name, alias or typo-tolerant fuzzy match) and resolve to exactly one class            | rejected with a reason               |
 | Conflicts     | proposed window compared with the rest of that weekday                                                                            | forced to review, never auto-applied |
@@ -96,15 +96,15 @@ identity needing 2+ character edits 0.15.
 
 ## Tech stack
 
-| Layer         | Technology                                                                                |
-| ------------- | ----------------------------------------------------------------------------------------- |
-| Frontend      | React 19, TypeScript 6, Vite 8, TailwindCSS v4, React Router 7, socket.io-client          |
-| Backend       | Node 24, Express 5, TypeScript, Socket.IO 4, Mongoose 9                                   |
-| Data          | MongoDB (in-memory server in tests), Luxon for IANA timezones                             |
-| AI            | `@google/genai` (e.g. `gemini-1.5-flash`) behind an internal `LlmProvider`, Zod contracts |
-| Auth          | `jose` (HS256 JWT), scrypt password hashing (Node built-in)                               |
-| Observability | pino with field redaction, express-rate-limit                                             |
-| Quality       | ESLint 10, Prettier, Vitest 5, tsup                                                       |
+| Layer         | Technology                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------- |
+| Frontend      | React 19, TypeScript 6, Vite 8, TailwindCSS v4, React Router 7, socket.io-client                               |
+| Backend       | Node 24, Express 5, TypeScript, Socket.IO 4, Mongoose 9                                                        |
+| Data          | MongoDB (in-memory server in tests), Luxon for IANA timezones                                                  |
+| AI            | **Groq** (OpenAI-compatible `openai` provider) or Gemini (`@google/genai`) behind `LlmProvider`, Zod contracts |
+| Auth          | `jose` (HS256 JWT), scrypt password hashing (Node built-in)                                                    |
+| Observability | pino with field redaction, express-rate-limit                                                                  |
+| Quality       | ESLint 10, Prettier, Vitest 5, tsup                                                                            |
 
 ## Repository layout
 
@@ -119,7 +119,10 @@ classschedule/
 
 ## Getting started
 
-**Prerequisites:** Node.js >= 20.19 (developed on 24) and a MongoDB instance.
+**Prerequisites:** Node.js >= 20.19 (developed on 24) and a MongoDB instance — a local `mongod`, a
+Docker container (`docker run -d -p 27017:27017 mongo`) or a free MongoDB Atlas cluster. `MONGODB_URI`
+is Zod-validated at boot (fail-fast, no silent fallback), and `npm run seed` creates the demo account
+alongside a locked baseline that the model layer refuses to rewrite.
 
 ```bash
 # 1. install
@@ -139,6 +142,10 @@ npm run dev
 
 Open <http://localhost:5173>, sign in with the seeded account, open **Messages** and press
 _Send next simulated message_ — the dashboard and timetable update live.
+
+LLM extraction runs on the offline `stub` provider by default (no key needed). For real output set
+`LLM_PROVIDER=openai` + `GROQ_API_KEY` (**Groq** on its OpenAI-compatible endpoint; add
+`LLM_BASE_URL` to point elsewhere) or `LLM_PROVIDER=gemini` + `LLM_API_KEY` (Google Gemini).
 
 ### Root scripts
 
@@ -167,12 +174,14 @@ See `apps/server/.env.example`.
 | `LLM_PROVIDER`           | `stub`                        | `stub`, `gemini`, `openai` or `anthropic`                |
 | `LLM_API_KEY`            | –                             | key for the selected provider (required for `gemini`)    |
 | `LLM_MODEL`              | `gemini-3.8-flash` for Gemini | model id (must be one your key can access)               |
-| `LOG_LEVEL`              | `info`                        | pino level (`silent` disables logging)                   |
-| `RATE_LIMIT_WINDOW_MS`   | `60000`                       | rate limit window                                        |
-| `AUTH_RATE_LIMIT_MAX`    | `10`                          | register/login requests per window per IP                |
-| `MESSAGE_RATE_LIMIT_MAX` | `60`                          | ingestion requests per window per IP                     |
-| `WORKER_ENABLED`         | `true`                        | background worker that runs the pipeline                 |
-| `WORKER_INTERVAL_MS`     | `4000`                        | worker poll interval                                     |
+| `GROQ_API_KEY`           | –                             | key used when `LLM_PROVIDER=openai` (Groq)               |
+| `LLM_BASE_URL`           | provider default              | overrides the base URL (Groq-compatible endpoints)       |
+| `LOG_LEVEL`              | `info`                        | pino level (`fatal` … `trace`, `silent`)                 |
+| `RATE_LIMIT_WINDOW_MS`   | `60000`                       | rate-limit window (ms)                                   |
+| `AUTH_RATE_LIMIT_MAX`    | `10`                          | auth requests per window per IP                          |
+| `MESSAGE_RATE_LIMIT_MAX` | `60`                          | message-ingestion requests per window per IP             |
+| `WORKER_ENABLED`         | `true`                        | start the background pipeline worker                     |
+| `WORKER_INTERVAL_MS`     | `4000`                        | how often the worker polls the queue (ms)                |
 
 ## Using the demo simulator
 
@@ -257,7 +266,7 @@ receives `schedule.cancelled` when a change auto-applies.
 | `npm` blocked by PowerShell policy    | use `npm.cmd`, or set an execution policy                                             |
 | `db: "disconnected"` in `/api/health` | start MongoDB or point `MONGODB_URI` at an instance                                   |
 | `429 Too many requests`               | expected — wait out the window or raise the limits                                    |
-| `503` from image import               | set `LLM_PROVIDER=gemini` **and** `LLM_API_KEY`                                       |
+| `503` from image import               | set `LLM_PROVIDER=gemini` + `LLM_API_KEY`, or `LLM_PROVIDER=openai` + `GROQ_API_KEY`  |
 | Messages stay `FAILED`                | the LLM call failed — the exact API error is in `processingErrors` and the server log |
 | Socket stays "Reconnecting"           | confirm the API is on :4000 and the `/socket.io` dev proxy is active                  |
 

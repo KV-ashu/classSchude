@@ -27,7 +27,8 @@ describe('messageEventSchema', () => {
 
   it('rejects string timestamps (must be Date instances at the contract boundary)', () => {
     expect(
-      messageEventSchema.safeParse({ ...validEvent, timestamp: '2026-03-10T09:15:00+05:30' }).success,
+      messageEventSchema.safeParse({ ...validEvent, timestamp: '2026-03-10T09:15:00+05:30' })
+        .success,
     ).toBe(false);
   });
 });

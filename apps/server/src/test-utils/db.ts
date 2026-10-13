@@ -7,7 +7,9 @@ export async function connectTestDatabase(baseUri: string, dbName: string): Prom
   await mongoose.connect(uri);
   // Build the indexes declared on every registered model so uniqueness and
   // immutability-guard tests are deterministic.
-  await Promise.all(Object.values(mongoose.models).map((registeredModel) => registeredModel.init()));
+  await Promise.all(
+    Object.values(mongoose.models).map((registeredModel) => registeredModel.init()),
+  );
 }
 
 /** Removes all documents from every collection (keeps indexes). */

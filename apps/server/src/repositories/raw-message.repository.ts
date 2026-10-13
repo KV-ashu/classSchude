@@ -90,5 +90,9 @@ export async function setRawMessageLlmMeta(
   messageId: string,
   llmMeta: LlmMeta,
 ): Promise<RawMessageDocument | null> {
-  return RawMessage.findByIdAndUpdate(messageId, { $set: { llmMeta } }, { returnDocument: 'after' });
+  return RawMessage.findByIdAndUpdate(
+    messageId,
+    { $set: { llmMeta } },
+    { returnDocument: 'after' },
+  );
 }

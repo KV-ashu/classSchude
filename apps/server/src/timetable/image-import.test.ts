@@ -33,7 +33,13 @@ describe('extractTimetableFromImage', () => {
     const provider = new StubProvider({
       entries: [
         { courseCode: 'DBMS', day: 1, startTime: '11:00', endTime: '11:50', room: 'A-101' },
-        { courseName: 'Operating Systems', day: 2, startTime: '09:00', endTime: '09:50', kind: 'LAB' },
+        {
+          courseName: 'Operating Systems',
+          day: 2,
+          startTime: '09:00',
+          endTime: '09:50',
+          kind: 'LAB',
+        },
       ],
     });
 
@@ -41,7 +47,12 @@ describe('extractTimetableFromImage', () => {
 
     expect(result.errors).toHaveLength(0);
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]).toMatchObject({ courseCode: 'DBMS', day: 1, room: 'A-101', kind: 'LECTURE' });
+    expect(result.rows[0]).toMatchObject({
+      courseCode: 'DBMS',
+      day: 1,
+      room: 'A-101',
+      kind: 'LECTURE',
+    });
     expect(result.rows[1]).toMatchObject({ courseCode: 'Operating Systems', kind: 'LAB' });
     expect(result.promptVersion).toBe('vision-v1');
   });

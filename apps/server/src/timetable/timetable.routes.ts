@@ -4,7 +4,12 @@ import { requireAuth, requireAuthContext } from '../auth/auth.middleware';
 import { ApiError } from '../errors';
 import { requireObjectIdParam } from '../http/require-object-id-param';
 import { createLlmProvider } from '../llm/factory';
-import { Course, TimetableEntry, type CourseDocument, type TimetableEntryDocument } from '../models/index';
+import {
+  Course,
+  TimetableEntry,
+  type CourseDocument,
+  type TimetableEntryDocument,
+} from '../models/index';
 import {
   findLatestBaselineVersion,
   listEntriesByUser,

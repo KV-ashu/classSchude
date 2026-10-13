@@ -18,7 +18,13 @@ export function ChangesPage() {
 
   useEffect(load, [load]);
   useLiveEvents(
-    ['schedule.updated', 'schedule.cancelled', 'review.resolved', 'change.reverted', 'message:processed'],
+    [
+      'schedule.updated',
+      'schedule.cancelled',
+      'review.resolved',
+      'change.reverted',
+      'message:processed',
+    ],
     load,
   );
 

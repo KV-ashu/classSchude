@@ -83,5 +83,8 @@ export async function extractScheduleChanges(
     };
   }
 
-  throw new ExtractionError('LLM output did not match the extraction schema', repaired.error.issues);
+  throw new ExtractionError(
+    'LLM output did not match the extraction schema',
+    repaired.error.issues,
+  );
 }

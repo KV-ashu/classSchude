@@ -1,10 +1,7 @@
 import { messageEventSchema, type MessageEvent } from '@classsync/shared';
 import type { Types } from 'mongoose';
 import type { RawMessageDocument } from '../models/index';
-import {
-  insertRawMessage,
-  updateRawMessageStatus,
-} from '../repositories/raw-message.repository';
+import { insertRawMessage, updateRawMessageStatus } from '../repositories/raw-message.repository';
 import { computeMessageHash } from '../utils/message-hash';
 
 export interface IngestResult {
@@ -44,8 +41,6 @@ export async function ingestMessage(
 }
 
 /** Moves a stored message into PROCESSING (called by the Phase 5 pipeline). */
-export async function markMessageProcessing(
-  messageId: string,
-): Promise<RawMessageDocument | null> {
+export async function markMessageProcessing(messageId: string): Promise<RawMessageDocument | null> {
   return updateRawMessageStatus(messageId, 'PROCESSING');
 }

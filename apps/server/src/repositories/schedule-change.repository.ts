@@ -49,5 +49,9 @@ export async function updateChangeStatus(
   changeId: string,
   status: ChangeStatus,
 ): Promise<ScheduleChangeDocument | null> {
-  return ScheduleChange.findByIdAndUpdate(changeId, { $set: { status } }, { returnDocument: 'after' });
+  return ScheduleChange.findByIdAndUpdate(
+    changeId,
+    { $set: { status } },
+    { returnDocument: 'after' },
+  );
 }

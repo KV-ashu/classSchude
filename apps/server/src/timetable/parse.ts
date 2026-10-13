@@ -37,7 +37,10 @@ const FIELD_ALIASES: Record<string, string> = {
 };
 
 function normalizeKey(key: string): string {
-  const normalized = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalized = key
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
   return FIELD_ALIASES[normalized] ?? normalized;
 }
 

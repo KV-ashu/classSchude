@@ -53,6 +53,9 @@ export async function findLatestBaselineVersion(userId: Types.ObjectId): Promise
 }
 
 /** Confirms the given baseline version - see TimetableEntryModel.lockBaseline. */
-export async function lockBaseline(userId: Types.ObjectId, baselineVersion: number): Promise<number> {
+export async function lockBaseline(
+  userId: Types.ObjectId,
+  baselineVersion: number,
+): Promise<number> {
   return TimetableEntry.lockBaseline(userId, baselineVersion);
 }

@@ -47,7 +47,10 @@ export function MessagesPage() {
 
       <Card title="Demo simulator">
         <div className="flex flex-wrap gap-2">
-          <Button disabled={busy} onClick={() => void send('/api/messages/simulate', { mode: 'next' })}>
+          <Button
+            disabled={busy}
+            onClick={() => void send('/api/messages/simulate', { mode: 'next' })}
+          >
             Send next simulated message
           </Button>
           <Button

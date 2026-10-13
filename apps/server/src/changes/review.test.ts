@@ -51,7 +51,9 @@ async function queueChange() {
 describe('review queue', () => {
   it('requires authentication', async () => {
     expect((await apiClient(app).get('/api/changes')).status).toBe(401);
-    expect((await apiClient(app).post('/api/changes/000000000000000000000000/approve').send({})).status).toBe(401);
+    expect(
+      (await apiClient(app).post('/api/changes/000000000000000000000000/approve').send({})).status,
+    ).toBe(401);
   });
 
   it('lists pending changes and applies one on approval', async () => {
@@ -63,13 +65,14 @@ describe('review queue', () => {
     const [queued] = (pending.body as ListBody).data;
     expect(queued?.status).toBe('PENDING_REVIEW');
 
-    const approved = await client.post(`/api/changes/${queued?.id}/approve`).send({ room: 'C-301' });
+    const approved = await client
+      .post(`/api/changes/${queued?.id}/approve`)
+      .send({ room: 'C-301' });
     expect(approved.status).toBe(200);
     expect((approved.body as ChangeBody).data.status).toBe('APPLIED_MANUALLY');
 
-    const effective = (await client.get(
-      `/api/changes/effective?date=${EFFECTIVE_DATE}`,
-    )).body as EffectiveBody;
+    const effective = (await client.get(`/api/changes/effective?date=${EFFECTIVE_DATE}`))
+      .body as EffectiveBody;
     const dbms = effective.data.entries.find((entry) => entry.courseCode === 'DBMS');
     expect(dbms?.status).toBe('CANCELLED');
 
@@ -90,9 +93,8 @@ describe('review queue', () => {
     expect(rejected.status).toBe(200);
     expect((rejected.body as ChangeBody).data.status).toBe('REJECTED');
 
-    const effective = (await client.get(
-      `/api/changes/effective?date=${EFFECTIVE_DATE}`,
-    )).body as EffectiveBody;
+    const effective = (await client.get(`/api/changes/effective?date=${EFFECTIVE_DATE}`))
+      .body as EffectiveBody;
     const dbms = effective.data.entries.find((entry) => entry.courseCode === 'DBMS');
     expect(dbms?.status).toBe('SCHEDULED');
     expect(dbms?.room).toBe('A-101');
